@@ -6,13 +6,32 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D918375D3029C00400231E27 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = D918375C3029C00300231E27 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		D91837343029AB5000231E27 /* MyWes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyWes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D918375A3029C00100231E27 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		D91837603029C00700231E27 /* Secrets.example.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.example.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D918375E3029C00500231E27 /* Exceptions for "MyWes" folder in "MyWes" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D91837333029AB5000231E27 /* MyWes */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D91837363029AB5000231E27 /* MyWes */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D918375E3029C00500231E27 /* Exceptions for "MyWes" folder in "MyWes" target */,
+			);
 			path = MyWes;
 			sourceTree = "<group>";
 		};
@@ -23,15 +42,26 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D918375D3029C00400231E27 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		D918375F3029C00600231E27 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				D918375A3029C00100231E27 /* Config.xcconfig */,
+				D91837603029C00700231E27 /* Secrets.example.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 		D918372B3029AB5000231E27 = {
 			isa = PBXGroup;
 			children = (
+				D918375F3029C00600231E27 /* Config */,
 				D91837363029AB5000231E27 /* MyWes */,
 				D91837353029AB5000231E27 /* Products */,
 			);
@@ -65,6 +95,7 @@
 			);
 			name = MyWes;
 			packageProductDependencies = (
+				D918375C3029C00300231E27 /* Supabase */,
 			);
 			productName = MyWes;
 			productReference = D91837343029AB5000231E27 /* MyWes.app */;
@@ -94,6 +125,9 @@
 			);
 			mainGroup = D918372B3029AB5000231E27;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D918375B3029C00200231E27 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D91837353029AB5000231E27 /* Products */;
 			projectDirPath = "";
@@ -246,6 +280,7 @@
 		};
 		D91837403029AB5200231E27 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D918375A3029C00100231E27 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -253,6 +288,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MyWes/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -277,6 +313,7 @@
 		};
 		D91837413029AB5200231E27 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D918375A3029C00100231E27 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -284,6 +321,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MyWes/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -328,6 +366,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D918375B3029C00200231E27 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.55.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D918375C3029C00300231E27 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D918375B3029C00200231E27 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D918372C3029AB5000231E27 /* Project object */;
 }

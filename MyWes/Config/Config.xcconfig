@@ -1,0 +1,5 @@
+// Empty defaults so the app target still builds without local secrets.
+SUPABASE_URL =
+SUPABASE_ANON_KEY =
+
+#include? "Secrets.xcconfig"

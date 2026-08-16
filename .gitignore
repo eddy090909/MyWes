@@ -1,3 +1,14 @@
+# MyWes / Xcode
+.DS_Store
+**/.DS_Store
+**/xcuserdata/
+**/*.xcuserstate
+MyWes/Config/Secrets.xcconfig
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
