@@ -26,12 +26,16 @@ final class AppSession {
     var selectedYear: String?
     var selectedInterests: Set<String> = []
     var followedOrgIDs: Set<UUID> = []
+    var savedEventIDs: Set<UUID> = []
 
     init() {
         let completed = UserDefaults.standard.bool(forKey: Self.onboardingKey)
         if completed {
+            let user = MockData.defaultUser()
             phase = .main
-            currentUser = MockData.defaultUser()
+            currentUser = user
+            followedOrgIDs = user.followedOrgIDs
+            savedEventIDs = []
         } else {
             phase = .splash
             currentUser = nil
@@ -47,6 +51,10 @@ final class AppSession {
     var hasCompletedOnboarding: Bool {
         get { UserDefaults.standard.bool(forKey: Self.onboardingKey) }
         set { UserDefaults.standard.set(newValue, forKey: Self.onboardingKey) }
+    }
+
+    var savedEventCount: Int {
+        savedEventIDs.count
     }
 
     static func isValidWesleyanEmail(_ raw: String) -> Bool {
@@ -89,6 +97,7 @@ final class AppSession {
         selectedYear = nil
         selectedInterests = []
         followedOrgIDs = []
+        savedEventIDs = []
         phase = .onboarding
         return true
     }
@@ -101,11 +110,31 @@ final class AppSession {
         }
     }
 
+    func isFollowing(_ orgID: UUID) -> Bool {
+        followedOrgIDs.contains(orgID)
+    }
+
     func toggleFollow(_ orgID: UUID) {
         if followedOrgIDs.contains(orgID) {
             followedOrgIDs.remove(orgID)
         } else {
             followedOrgIDs.insert(orgID)
+        }
+        if var user = currentUser {
+            user.followedOrgIDs = followedOrgIDs
+            currentUser = user
+        }
+    }
+
+    func isSaved(_ eventID: UUID) -> Bool {
+        savedEventIDs.contains(eventID)
+    }
+
+    func toggleSaveEvent(_ eventID: UUID) {
+        if savedEventIDs.contains(eventID) {
+            savedEventIDs.remove(eventID)
+        } else {
+            savedEventIDs.insert(eventID)
         }
     }
 

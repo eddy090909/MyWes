@@ -12,6 +12,7 @@ struct MainTabView: View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 HomeView()
+                    .appDestinations()
             }
             .tabItem {
                 Label("Home", systemImage: "house.fill")
@@ -19,7 +20,8 @@ struct MainTabView: View {
             .tag(0)
 
             NavigationStack {
-                PlaceholderTabView(title: "Discover")
+                DiscoverView()
+                    .appDestinations()
             }
             .tabItem {
                 Label("Discover", systemImage: "safari.fill")

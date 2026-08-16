@@ -19,6 +19,8 @@ enum Theme {
     static let splashDark = Color(red: 0.12, green: 0.11, blue: 0.10)
     static let splashMuted = Color(red: 0.55, green: 0.53, blue: 0.51)
     static let splashTagline = Color(red: 0.70, green: 0.68, blue: 0.66)
+    static let savedBannerBackground = Color(red: 0.96, green: 0.91, blue: 0.90)
+    static let discoverCardMuted = Color(red: 0.78, green: 0.76, blue: 0.74)
 
     // MARK: - Spacing
 

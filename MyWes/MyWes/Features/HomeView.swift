@@ -12,10 +12,6 @@ struct HomeView: View {
         session.currentUser?.firstName ?? "Alex"
     }
 
-    private var followedIDs: Set<UUID> {
-        session.currentUser?.followedOrgIDs ?? []
-    }
-
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
@@ -25,10 +21,33 @@ struct HomeView: View {
         }
     }
 
+    private var savedBannerText: String {
+        let count = session.savedEventCount
+        let noun = count == 1 ? "event" : "events"
+        return "You have \(count) saved \(noun) — tap to view"
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 header
+
+                if session.savedEventCount > 0 {
+                    NavigationLink(value: AppRoute.savedEvents) {
+                        Text(savedBannerText)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.cardinalPressed)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(Theme.savedBannerBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, Theme.screenPadding)
+                    .padding(.top, 14)
+                    .accessibilityLabel(savedBannerText)
+                }
 
                 upcomingEvents
                     .padding(.top, 22)
@@ -64,15 +83,18 @@ struct HomeView: View {
 
             Spacer()
 
-            // Non-interactive chrome — Search is not wired in Milestone 1
-            Text("Search")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Theme.secondaryText.opacity(0.7))
-                .padding(.horizontal, 16)
-                .frame(height: 36)
-                .background(Theme.background)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(Theme.border, lineWidth: 1))
+            NavigationLink(value: AppRoute.search) {
+                Text("Search")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.ink.opacity(0.85))
+                    .padding(.horizontal, 16)
+                    .frame(height: 36)
+                    .background(Theme.background)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Theme.border, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Search")
         }
         .padding(.horizontal, Theme.screenPadding)
         .padding(.top, 12)
@@ -80,13 +102,21 @@ struct HomeView: View {
 
     private var upcomingEvents: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Upcoming Events", trailingLabel: "See all")
-                .padding(.horizontal, Theme.screenPadding)
+            SectionHeader(title: "Upcoming Events") {
+                NavigationLink(value: AppRoute.events) {
+                    SeeAllLink()
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, Theme.screenPadding)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(MockData.homeEvents) { event in
-                        EventCard(event: event)
+                        NavigationLink(value: AppRoute.event(event.id)) {
+                            EventCard(event: event)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, Theme.screenPadding)
@@ -106,12 +136,13 @@ struct HomeView: View {
                 }
             }
             .padding(.horizontal, Theme.screenPadding)
+            .accessibilityElement(children: .contain)
         }
     }
 
     private var popularAskWes: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Popular on AskWes", trailingLabel: "See all")
+            SectionHeader(title: "Popular on AskWes")
                 .padding(.horizontal, Theme.screenPadding)
 
             VStack(spacing: Theme.listGap) {
@@ -128,16 +159,19 @@ struct HomeView: View {
             SectionHeader(title: "From Organizations You Follow")
                 .padding(.horizontal, Theme.screenPadding)
 
-            let updates = MockData.updates(for: followedIDs)
+            let updates = MockData.updates(for: session.followedOrgIDs)
             if updates.isEmpty {
-                Text("Follow organizations during onboarding to see updates here.")
+                Text("Follow organizations to see updates here.")
                     .font(Typography.bodySmall)
                     .foregroundStyle(Theme.secondaryText)
                     .padding(.horizontal, Theme.screenPadding)
             } else {
                 VStack(spacing: Theme.listGap) {
                     ForEach(updates) { update in
-                        OrgUpdateRow(update: update)
+                        NavigationLink(value: AppRoute.organization(update.orgID)) {
+                            OrgUpdateRow(update: update)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, Theme.screenPadding)
@@ -149,6 +183,7 @@ struct HomeView: View {
 #Preview {
     NavigationStack {
         HomeView()
+            .appDestinations()
     }
     .environment(AppSession())
 }

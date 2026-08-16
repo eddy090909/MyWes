@@ -56,56 +56,72 @@ enum MockData {
             name: "Wesleyan Student Assembly",
             category: "Governance",
             memberCount: 45,
-            description: "The elected student government representing all Wesleyan undergraduates."
+            description: "The elected student government representing all Wesleyan undergraduates.",
+            contactEmail: "contact@wesleyan.edu",
+            instagramHandle: "wesleyanwsa"
         ),
         Organization(
             id: IDs.org2,
             name: "WesWings Radio",
             category: "Media",
             memberCount: 60,
-            description: "Student-run radio station broadcasting music, talk, and live event coverage."
+            description: "Student-run radio station broadcasting music, talk, and live event coverage.",
+            contactEmail: "contact@wesleyan.edu",
+            instagramHandle: "weswingsradio"
         ),
         Organization(
             id: IDs.org3,
             name: "Fries Center for Global Studies",
             category: "Academic",
             memberCount: 20,
-            description: "Supports study abroad, global fellowships, and international student life."
+            description: "Supports study abroad, global fellowships, and international student life.",
+            contactEmail: "contact@wesleyan.edu",
+            instagramHandle: "friescenter"
         ),
         Organization(
             id: IDs.org4,
             name: "First-Gen Network",
             category: "Community",
             memberCount: 80,
-            description: "A community and resource hub for first-generation college students."
+            description: "A community and resource hub for first-generation college students.",
+            contactEmail: "contact@wesleyan.edu",
+            instagramHandle: "wesfirstgen"
         ),
         Organization(
             id: IDs.org5,
             name: "Eclectic Society",
             category: "Social",
             memberCount: 35,
-            description: "One of Wesleyan's program houses, known for concerts and community events."
+            description: "One of Wesleyan's program houses, known for concerts and community events.",
+            contactEmail: "contact@wesleyan.edu",
+            instagramHandle: "eclecticwes"
         ),
         Organization(
             id: IDs.org6,
             name: "Career Center",
             category: "Academic",
             memberCount: 15,
-            description: "Helps students find internships, jobs, and plan life after Wesleyan."
+            description: "Helps students find internships, jobs, and plan life after Wesleyan.",
+            contactEmail: "contact@wesleyan.edu",
+            instagramHandle: "wescareercenter"
         ),
         Organization(
             id: IDs.org7,
             name: "Class of 2027 Council",
             category: "Governance",
             memberCount: 12,
-            description: "Plans class events and represents first-years to the administration."
+            description: "Plans class events and represents first-years to the administration.",
+            contactEmail: "contact@wesleyan.edu",
+            instagramHandle: "wes2027"
         ),
         Organization(
             id: IDs.org8,
             name: "Wesleyan Dining",
             category: "Campus Services",
             memberCount: 25,
-            description: "Runs Usdan, Summerfield, and Pi Cafe, and coordinates dining events."
+            description: "Runs Usdan, Summerfield, and Pi Cafe, and coordinates dining events.",
+            contactEmail: "contact@wesleyan.edu",
+            instagramHandle: "wesdining"
         ),
     ]
 
@@ -202,7 +218,22 @@ enum MockData {
         IDs.org8: "Midnight Breakfast returns during finals week.",
     ]
 
+    static let eventCategories = ["All", "Social", "Academic", "Dining", "Community"]
+    static let organizationCategories = [
+        "All",
+        "Governance",
+        "Media",
+        "Academic",
+        "Community",
+        "Social",
+        "Campus Services",
+    ]
+
     static var homeEvents: [Event] {
+        Array(events.prefix(4))
+    }
+
+    static var discoverWeekEvents: [Event] {
         Array(events.prefix(4))
     }
 
@@ -225,6 +256,34 @@ enum MockData {
                     updateText: orgUpdateCopy[org.id] ?? "New update posted."
                 )
             }
+    }
+
+    static func event(id: UUID) -> Event? {
+        events.first { $0.id == id }
+    }
+
+    static func organization(id: UUID) -> Organization? {
+        organizations.first { $0.id == id }
+    }
+
+    static func events(hostedBy orgID: UUID) -> [Event] {
+        events.filter { $0.orgID == orgID }
+    }
+
+    static func search(query: String) -> (events: [Event], organizations: [Organization], questions: [Question]) {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !needle.isEmpty else { return ([], [], []) }
+
+        let matchedEvents = events.filter {
+            $0.title.lowercased().contains(needle) || $0.category.lowercased().contains(needle)
+        }
+        let matchedOrgs = organizations.filter {
+            $0.name.lowercased().contains(needle) || $0.category.lowercased().contains(needle)
+        }
+        let matchedQuestions = questions.filter {
+            $0.title.lowercased().contains(needle) || $0.topic.lowercased().contains(needle)
+        }
+        return (matchedEvents, matchedOrgs, matchedQuestions)
     }
 
     static func defaultUser(email: String = "alex@wesleyan.edu", firstName: String = "Alex") -> AppUser {

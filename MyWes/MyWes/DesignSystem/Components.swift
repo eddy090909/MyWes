@@ -65,15 +65,17 @@ struct PrimaryButton: View {
 
 struct FollowButton: View {
     var isFollowing: Bool
+    var isWide: Bool = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Text(isFollowing ? "Following" : "Follow")
-                .font(.system(size: 12.5, weight: .bold))
+                .font(.system(size: isWide ? 15 : 12.5, weight: .bold))
                 .foregroundStyle(isFollowing ? Theme.ink : .white)
-                .padding(.horizontal, 14)
-                .frame(height: 30)
+                .padding(.horizontal, isWide ? 0 : 14)
+                .frame(maxWidth: isWide ? .infinity : nil)
+                .frame(height: isWide ? 44 : 30)
                 .background(isFollowing ? Theme.background : Theme.cardinal)
                 .clipShape(Capsule())
                 .overlay(
@@ -82,6 +84,8 @@ struct FollowButton: View {
                 )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(isFollowing ? "Following" : "Follow")
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -183,9 +187,14 @@ struct ProgressDots: View {
 
 // MARK: - Section header
 
-struct SectionHeader: View {
+struct SectionHeader<Trailing: View>: View {
     let title: String
-    var trailingLabel: String? = nil
+    var trailing: Trailing
+
+    init(title: String, @ViewBuilder trailing: () -> Trailing) {
+        self.title = title
+        self.trailing = trailing()
+    }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -193,12 +202,32 @@ struct SectionHeader: View {
                 .font(Typography.sectionTitle)
                 .foregroundStyle(Theme.ink)
             Spacer()
-            if let trailingLabel {
-                Text(trailingLabel)
-                    .font(Typography.label)
-                    .foregroundStyle(Theme.cardinal.opacity(0.55))
-            }
+            trailing
         }
+    }
+}
+
+extension SectionHeader where Trailing == EmptyView {
+    init(title: String) {
+        self.init(title: title) { EmptyView() }
+    }
+}
+
+func eventPlaceholderColor(for category: String) -> Color {
+    switch category {
+    case "Academic", "Community":
+        return Theme.blueAccent
+    default:
+        return Theme.cardinal
+    }
+}
+
+func organizationPlaceholderColor(for category: String) -> Color {
+    switch category {
+    case "Media", "Community", "Campus Services":
+        return Theme.blueAccent
+    default:
+        return Theme.cardinal
     }
 }
 
@@ -223,7 +252,7 @@ struct EventCard: View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .bottomLeading) {
                 RoundedRectangle(cornerRadius: 0)
-                    .fill(bannerColor)
+                    .fill(eventPlaceholderColor(for: event.category))
                     .frame(height: 74)
 
                 Text(event.category)
@@ -255,15 +284,6 @@ struct EventCard: View {
         .frame(width: 200, alignment: .leading)
         .cardChrome()
     }
-
-    private var bannerColor: Color {
-        switch event.category {
-        case "Academic", "Community":
-            return Theme.blueAccent
-        default:
-            return Theme.cardinal
-        }
-    }
 }
 
 struct DiningStatusCard: View {
@@ -286,6 +306,8 @@ struct DiningStatusCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.cardPadding)
         .cardChrome()
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isStaticText)
     }
 }
 
@@ -306,6 +328,8 @@ struct QuestionRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.cardPadding)
         .cardChrome()
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isStaticText)
     }
 }
 

@@ -23,6 +23,23 @@ struct Event: Identifiable, Equatable {
     var location: String
     var orgID: UUID
     var description: String
+
+    /// Temporary display split of `dateLabel` (e.g. "Fri, Sep 12" → "SEP" / "12").
+    /// Replace with real `start_at` formatting when events are loaded from Supabase.
+    var monthLabel: String {
+        dateParts.month
+    }
+
+    var dayNumber: String {
+        dateParts.day
+    }
+
+    private var dateParts: (month: String, day: String) {
+        let cleaned = dateLabel.replacingOccurrences(of: ",", with: "")
+        let parts = cleaned.split(separator: " ").map(String.init)
+        guard parts.count >= 3 else { return ("", "") }
+        return (parts[1].uppercased(), parts[2])
+    }
 }
 
 struct Organization: Identifiable, Equatable {
@@ -31,6 +48,8 @@ struct Organization: Identifiable, Equatable {
     var category: String
     var memberCount: Int
     var description: String
+    var contactEmail: String? = nil
+    var instagramHandle: String? = nil
 }
 
 struct DiningLocation: Identifiable, Equatable {
