@@ -7,12 +7,6 @@ import SwiftUI
 
 struct SignInView: View {
     @Environment(AppSession.self) private var session
-    @State private var email = ""
-    @FocusState private var isEmailFocused: Bool
-
-    private var canContinue: Bool {
-        AppSession.isValidWesleyanEmail(email) && !session.isSendingLink
-    }
 
     var body: some View {
         ScrollView {
@@ -31,61 +25,52 @@ struct SignInView: View {
                     .foregroundStyle(Theme.secondaryText)
                     .padding(.bottom, 10)
 
-                Text("Enter your Wesleyan email to continue.")
+                Text("Sign in with your Wesleyan Google account to continue.")
                     .font(Typography.body)
                     .foregroundStyle(Theme.secondaryText)
                     .padding(.bottom, 32)
 
-                FormField(
-                    label: "Wesleyan Email",
-                    placeholder: "you@wesleyan.edu",
-                    text: $email,
-                    submitLabel: .continue,
-                    onSubmit: sendLinkIfValid,
-                    focus: $isEmailFocused
-                )
-                .disabled(session.isSendingLink)
-                .padding(.bottom, session.authError == nil ? 24 : 10)
+                PrimaryButton(
+                    title: "Continue with Google",
+                    isEnabled: !session.isSigningIn,
+                    isLoading: session.isSigningIn
+                ) {
+                    Task { await session.signInWithGoogle() }
+                }
 
-                if let authError = session.authError {
+                Text("Use your @wesleyan.edu Google account.")
+                    .font(Typography.label)
+                    .foregroundStyle(Theme.secondaryText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 16)
+
+                if let authError = session.authError, !authError.isEmpty {
                     Text(authError)
                         .font(Typography.caption)
                         .foregroundStyle(Theme.cardinal)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityAddTraits(.isStaticText)
-                        .padding(.bottom, 14)
-                }
+                        .padding(.top, 20)
+                        .padding(.bottom, 12)
 
-                PrimaryButton(
-                    title: "Send sign-in link",
-                    isEnabled: canContinue,
-                    isLoading: session.isSendingLink
-                ) {
-                    sendLinkIfValid()
-                }
-
-                Text("Only Wesleyan email addresses are eligible.")
-                    .font(Typography.label)
-                    .foregroundStyle(Theme.secondaryText)
+                    Button {
+                        Task { await session.tryAnotherGoogleAccount() }
+                    } label: {
+                        Text("Try another Google account")
+                            .font(Typography.label)
+                            .foregroundStyle(Theme.cardinal)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(session.isSigningIn)
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 16)
+                    .accessibilityHint("Signs in with a different Google account")
+                }
             }
             .padding(.horizontal, 28)
             .padding(.top, 80)
             .padding(.bottom, 40)
         }
         .background(Theme.background.ignoresSafeArea())
-        .scrollDismissesKeyboard(.interactively)
-        .onAppear {
-            if email.isEmpty {
-                email = session.pendingEmail
-            }
-        }
-    }
-
-    private func sendLinkIfValid() {
-        guard canContinue else { return }
-        Task { await session.sendSignInLink(to: email) }
     }
 }
 

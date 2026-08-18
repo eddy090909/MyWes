@@ -31,7 +31,7 @@ struct ProvisioningFailureView: View {
             Button {
                 Task { await session.signOutFromFailure() }
             } label: {
-                Text("Use a different email")
+                Text("Try another Google account")
                     .font(Typography.label)
                     .foregroundStyle(Theme.cardinal)
             }

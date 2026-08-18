@@ -3,6 +3,7 @@
 //  MyWes
 //
 
+import Auth
 import Foundation
 import Observation
 import SwiftUI
@@ -11,7 +12,6 @@ enum AppPhase: Equatable {
     case restoring
     case splash
     case signIn
-    case checkEmail
     case onboarding
     case main
     case provisioningFailure
@@ -31,10 +31,9 @@ final class AppSession {
     var savedEventIDs: Set<UUID> = []
     var engagementError: String?
 
-    var isSendingLink = false
+    var isSigningIn = false
     var isHandlingCallback = false
     var isCompletingOnboarding = false
-    var resendCooldownRemaining = 0
 
     let catalog: CampusCatalog
 
@@ -43,11 +42,9 @@ final class AppSession {
     private let engagementService: EngagementService?
     private var isPreviewMode = false
     private var authGeneration = 0
-    private var cooldownTask: Task<Void, Never>?
     private var didStart = false
 
     private static let wesleyanEmailPattern = /^[a-z0-9._%+\-]+@wesleyan\.edu$/
-    private static let resendCooldownSeconds = 60
     private static let engagementLoadFailedMessage = "Couldn't load your follows and saved events. Try again."
 
     init() {
@@ -68,10 +65,6 @@ final class AppSession {
         savedEventIDs.count
     }
 
-    var canResendLink: Bool {
-        resendCooldownRemaining == 0 && !isSendingLink
-    }
-
     static func isValidWesleyanEmail(_ raw: String) -> Bool {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !trimmed.isEmpty else { return false }
@@ -89,43 +82,44 @@ final class AppSession {
         phase = .signIn
     }
 
-    func sendSignInLink(to email: String) async {
-        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard Self.isValidWesleyanEmail(trimmed) else { return }
+    func signInWithGoogle() async {
+        guard !isSigningIn else { return }
         guard let authService else {
             authError = SupabaseConfigError.missingConfiguration.localizedDescription
             return
         }
 
-        pendingEmail = trimmed
-        isSendingLink = true
+        authGeneration += 1
+        let generation = authGeneration
+        isSigningIn = true
+        isHandlingCallback = true
         authError = nil
-        defer { isSendingLink = false }
+        engagementError = nil
+        defer { isSigningIn = false }
 
         do {
-            try await authService.sendMagicLink(to: trimmed)
-            phase = .checkEmail
-            startResendCooldown()
+            let session = try await authService.signInWithGoogle()
+            guard generation == authGeneration else { return }
+            try await completeAuthenticatedSession(session, generation: generation)
         } catch {
-            authError = AuthUserFacingError.message(for: error)
+            guard generation == authGeneration else { return }
+            await authService.signOut()
+            signedOut(to: .signIn)
+            authError = AuthUserFacingError.isCancellation(error)
+                ? nil
+                : AuthUserFacingError.message(for: error)
         }
     }
 
-    func resendSignInLink() async {
-        guard canResendLink else { return }
-        await sendSignInLink(to: pendingEmail)
-    }
-
-    func returnToEmailEntry() {
-        authError = nil
-        isHandlingCallback = false
-        phase = .signIn
+    func tryAnotherGoogleAccount() async {
+        await signInWithGoogle()
     }
 
     func handleAuthURL(_ url: URL) async {
         guard AuthRedirect.isCallback(url) else { return }
+        guard !isSigningIn, !isHandlingCallback else { return }
         guard let authService else {
-            signedOut(to: pendingEmail.isEmpty ? .signIn : .checkEmail)
+            signedOut(to: .signIn)
             authError = SupabaseConfigError.missingConfiguration.localizedDescription
             return
         }
@@ -135,17 +129,18 @@ final class AppSession {
         isHandlingCallback = true
         authError = nil
         engagementError = nil
-        phase = .restoring
 
         do {
-            let userID = try await authService.sessionUserID(from: url)
+            let session = try await authService.session(from: url)
             guard generation == authGeneration else { return }
-            try await loadProfileAndRoute(userID: userID, generation: generation)
+            try await completeAuthenticatedSession(session, generation: generation)
         } catch {
             guard generation == authGeneration else { return }
             await authService.signOut()
-            signedOut(to: pendingEmail.isEmpty ? .signIn : .checkEmail)
-            authError = AuthUserFacingError.message(for: error)
+            signedOut(to: .signIn)
+            authError = AuthUserFacingError.isCancellation(error)
+                ? nil
+                : AuthUserFacingError.message(for: error)
         }
     }
 
@@ -163,11 +158,11 @@ final class AppSession {
         phase = .restoring
 
         do {
-            guard let userID = try await authService.validUserID() else {
+            guard let session = try await authService.validSession() else {
                 signedOut(to: .splash)
                 return
             }
-            try await loadProfileAndRoute(userID: userID, generation: generation)
+            try await completeAuthenticatedSession(session, generation: generation)
         } catch {
             guard generation == authGeneration else { return }
             signedOut(to: .signIn)
@@ -261,18 +256,30 @@ final class AppSession {
         engagementError = nil
 
         do {
-            guard let userID = try await authService.validUserID() else {
+            guard let session = try await authService.validSession() else {
                 guard generation == authGeneration else { return }
                 phase = .splash
                 return
             }
-            try await loadProfileAndRoute(userID: userID, generation: generation)
+            try await completeAuthenticatedSession(session, generation: generation)
         } catch {
             guard generation == authGeneration else { return }
             await authService.signOut()
             signedOut(to: .splash)
             authError = AuthUserFacingError.message(for: error)
         }
+    }
+
+    private func completeAuthenticatedSession(_ session: Session, generation: Int) async throws {
+        guard let email = session.user.email, Self.isValidWesleyanEmail(email) else {
+            await authService?.signOut()
+            signedOut(to: .signIn)
+            authError = AuthUserFacingError.wesleyanOnlyMessage
+            return
+        }
+
+        phase = .restoring
+        try await loadProfileAndRoute(userID: session.user.id, generation: generation)
     }
 
     private func loadProfileAndRoute(userID: UUID, generation: Int) async throws {
@@ -353,8 +360,9 @@ final class AppSession {
         authGeneration += 1
         catalog.reset()
         currentUser = nil
+        pendingEmail = ""
         isHandlingCallback = false
-        isSendingLink = false
+        isSigningIn = false
         isCompletingOnboarding = false
         onboardStep = 0
         selectedYear = nil
@@ -453,20 +461,6 @@ final class AppSession {
         if var user = currentUser {
             user.followedOrgIDs = followedOrgIDs
             currentUser = user
-        }
-    }
-
-    private func startResendCooldown() {
-        cooldownTask?.cancel()
-        resendCooldownRemaining = Self.resendCooldownSeconds
-        cooldownTask = Task { [weak self] in
-            while let self, self.resendCooldownRemaining > 0, !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
-                guard !Task.isCancelled else { return }
-                if self.resendCooldownRemaining > 0 {
-                    self.resendCooldownRemaining -= 1
-                }
-            }
         }
     }
 }

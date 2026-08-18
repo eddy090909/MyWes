@@ -3,6 +3,7 @@
 //  MyWes
 //
 
+import AuthenticationServices
 import Foundation
 import Auth
 import Supabase
@@ -10,16 +11,21 @@ import Supabase
 struct AuthService {
     let client: SupabaseClient
 
-    func sendMagicLink(to email: String) async throws {
-        try await client.auth.signInWithOTP(
-            email: email,
-            redirectTo: AuthRedirect.callbackURL,
-            shouldCreateUser: true
-        )
+    func signInWithGoogle() async throws -> Session {
+        try await client.auth.signInWithOAuth(
+            provider: .google,
+            redirectTo: AuthRedirect.callbackURL
+        ) { session in
+            session.prefersEphemeralWebBrowserSession = true
+        }
+    }
+
+    func session(from url: URL) async throws -> Session {
+        try await client.auth.session(from: url)
     }
 
     func sessionUserID(from url: URL) async throws -> UUID {
-        try await client.auth.session(from: url).user.id
+        try await session(from: url).user.id
     }
 
     func validUserID() async throws -> UUID? {
@@ -40,7 +46,23 @@ struct AuthService {
 }
 
 enum AuthUserFacingError {
+    static let wesleyanOnlyMessage =
+        "MyWes is only available to Wesleyan accounts. Sign in with your @wesleyan.edu Google account."
+
+    static func isCancellation(_ error: Error) -> Bool {
+        if let asError = error as? ASWebAuthenticationSessionError {
+            return asError.code == .canceledLogin
+        }
+        let nsError = error as NSError
+        return nsError.domain == ASWebAuthenticationSessionError.errorDomain
+            && nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue
+    }
+
     static func message(for error: Error) -> String {
+        if isCancellation(error) {
+            return ""
+        }
+
         if let configError = error as? SupabaseConfigError {
             return configError.localizedDescription
         }
@@ -48,26 +70,62 @@ enum AuthUserFacingError {
         if let authError = error as? AuthError {
             switch authError {
             case .api(let message, _, _, let response):
+                if looksLikeWorkspacePolicy(message) {
+                    return message
+                }
                 if response.statusCode == 403 || response.statusCode == 400 {
-                    return message.isEmpty
-                        ? "MyWes is only available to Wesleyan University email addresses."
-                        : message
+                    return wesleyanOnlyMessage
                 }
-                if response.statusCode == 429 {
-                    return "Please wait a moment before requesting another sign-in link."
-                }
-                return message.isEmpty ? "Could not send a sign-in link. Please try again." : message
+                return message.isEmpty
+                    ? "Could not complete Google sign-in. Please try again."
+                    : message
             case .sessionMissing:
                 return "Your session expired. Please sign in again."
-            case .pkceGrantCodeExchange:
-                return "That sign-in link is invalid or expired. Request a new one."
-            case .implicitGrantRedirect:
-                return "That sign-in link could not be opened. Request a new one."
+            case .pkceGrantCodeExchange(let message, let oauthError, let code):
+                if let exact = workspacePolicyMessage(message, oauthError, code) {
+                    return exact
+                }
+                return "Google sign-in didn't complete. Please try again."
+            case .implicitGrantRedirect(let message):
+                if looksLikeWorkspacePolicy(message) {
+                    return message
+                }
+                return "Google sign-in didn't complete. Please try again."
             default:
-                return authError.errorDescription ?? "Could not complete sign-in. Please try again."
+                let description = authError.errorDescription ?? ""
+                if looksLikeWorkspacePolicy(description) {
+                    return description
+                }
+                return description.isEmpty
+                    ? "Could not complete Google sign-in. Please try again."
+                    : description
             }
         }
 
+        let localized = error.localizedDescription
+        if looksLikeWorkspacePolicy(localized) {
+            return localized
+        }
         return "Something went wrong. Please try again."
+    }
+
+    private static func workspacePolicyMessage(_ parts: String?...) -> String? {
+        let nonempty = parts.compactMap { part -> String? in
+            guard let part, !part.isEmpty else { return nil }
+            return part
+        }
+        let combined = nonempty.joined(separator: " ")
+        guard looksLikeWorkspacePolicy(combined) else { return nil }
+        return combined
+    }
+
+    private static func looksLikeWorkspacePolicy(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.contains("app blocked")
+            || lower.contains("administrator approval")
+            || lower.contains("access_denied")
+            || lower.contains("access denied")
+            || lower.contains("org_internal")
+            || (lower.contains("403") && lower.contains("org"))
     }
 }

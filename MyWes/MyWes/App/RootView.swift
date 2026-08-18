@@ -17,8 +17,6 @@ struct RootView: View {
                 SplashView()
             case .signIn:
                 SignInView()
-            case .checkEmail:
-                CheckEmailView()
             case .onboarding:
                 OnboardingView()
             case .main:
