@@ -32,6 +32,12 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 0) {
                 header
 
+                if session.engagementError != nil {
+                    EngagementErrorCaption()
+                        .padding(.horizontal, Theme.screenPadding)
+                        .padding(.top, 14)
+                }
+
                 if session.savedEventCount > 0 {
                     NavigationLink(value: AppRoute.savedEvents) {
                         Text(savedBannerText)

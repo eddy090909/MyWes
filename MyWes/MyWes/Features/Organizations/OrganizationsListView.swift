@@ -19,6 +19,12 @@ struct OrganizationsListView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                if session.engagementError != nil {
+                    EngagementErrorCaption()
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                }
+
                 CatalogStatusView(
                     catalog: session.catalog,
                     emptyMessage: "No organizations yet."

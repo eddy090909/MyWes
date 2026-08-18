@@ -46,7 +46,12 @@ struct OrganizationDetailView: View {
                             ) {
                                 session.toggleFollow(orgID)
                             }
-                            .padding(.bottom, 18)
+                            .padding(.bottom, session.engagementError == nil ? 18 : 10)
+
+                            if session.engagementError != nil {
+                                EngagementErrorCaption()
+                                    .padding(.bottom, 18)
+                            }
 
                             Text(organization.description)
                                 .font(.system(size: 14))

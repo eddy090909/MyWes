@@ -16,6 +16,10 @@ struct SavedEventsView: View {
         ScrollView {
             CatalogStatusView(catalog: session.catalog, overlayPadding: 0) {
                 LazyVStack(spacing: 10) {
+                    if session.engagementError != nil {
+                        EngagementErrorCaption()
+                    }
+
                     ForEach(savedEvents) { event in
                         NavigationLink(value: AppRoute.event(event.id)) {
                             VStack(alignment: .leading, spacing: 4) {

@@ -99,6 +99,20 @@ struct FollowButton: View {
     }
 }
 
+struct EngagementErrorCaption: View {
+    @Environment(AppSession.self) private var session
+
+    var body: some View {
+        if let message = session.engagementError {
+            Text(message)
+                .font(Typography.caption)
+                .foregroundStyle(Theme.cardinal)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityAddTraits(.isStaticText)
+        }
+    }
+}
+
 // MARK: - Form
 
 struct FormField: View {

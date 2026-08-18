@@ -6,6 +6,8 @@
 import SwiftUI
 
 struct RestoringSessionView: View {
+    @Environment(AppSession.self) private var session
+
     var body: some View {
         ZStack {
             Theme.splashDark
@@ -19,10 +21,27 @@ struct RestoringSessionView: View {
                     .tracking(-0.4)
                     .foregroundStyle(.white)
 
-                ProgressView()
-                    .tint(.white)
-                    .padding(.top, 12)
-                    .accessibilityLabel("Restoring your session")
+                if let error = session.engagementError {
+                    Text(error)
+                        .font(Typography.caption)
+                        .foregroundStyle(Theme.splashTagline)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 40)
+                        .padding(.top, 12)
+
+                    Button("Retry") {
+                        Task { await session.retryEngagementLoad() }
+                    }
+                    .font(Typography.label)
+                    .foregroundStyle(.white)
+                    .padding(.top, 8)
+                    .accessibilityLabel("Retry")
+                } else {
+                    ProgressView()
+                        .tint(.white)
+                        .padding(.top, 12)
+                        .accessibilityLabel("Restoring your session")
+                }
             }
         }
     }
@@ -30,4 +49,5 @@ struct RestoringSessionView: View {
 
 #Preview {
     RestoringSessionView()
+        .environment(AppSession.preview())
 }

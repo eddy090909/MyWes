@@ -29,6 +29,7 @@ final class AppSession {
     var selectedInterests: Set<String> = []
     var followedOrgIDs: Set<UUID> = []
     var savedEventIDs: Set<UUID> = []
+    var engagementError: String?
 
     var isSendingLink = false
     var isHandlingCallback = false
@@ -39,21 +40,26 @@ final class AppSession {
 
     private let authService: AuthService?
     private let profileService: ProfileService?
+    private let engagementService: EngagementService?
+    private var isPreviewMode = false
     private var authGeneration = 0
     private var cooldownTask: Task<Void, Never>?
     private var didStart = false
 
     private static let wesleyanEmailPattern = /^[a-z0-9._%+\-]+@wesleyan\.edu$/
     private static let resendCooldownSeconds = 60
+    private static let engagementLoadFailedMessage = "Couldn't load your follows and saved events. Try again."
 
     init() {
         if let client = try? SupabaseClientProvider.makeClient() {
             authService = AuthService(client: client)
             profileService = ProfileService(client: client)
+            engagementService = EngagementService(client: client)
             catalog = CampusCatalog(client: client)
         } else {
             authService = nil
             profileService = nil
+            engagementService = nil
             catalog = CampusCatalog(client: nil)
         }
     }
@@ -128,6 +134,7 @@ final class AppSession {
         let generation = authGeneration
         isHandlingCallback = true
         authError = nil
+        engagementError = nil
         phase = .restoring
 
         do {
@@ -144,6 +151,7 @@ final class AppSession {
 
     func retryProfileLoad() async {
         authError = nil
+        engagementError = nil
         guard let authService else {
             signedOut(to: .signIn)
             authError = SupabaseConfigError.missingConfiguration.localizedDescription
@@ -185,15 +193,12 @@ final class AppSession {
     }
 
     func toggleFollow(_ orgID: UUID) {
-        if followedOrgIDs.contains(orgID) {
-            followedOrgIDs.remove(orgID)
-        } else {
-            followedOrgIDs.insert(orgID)
-        }
-        if var user = currentUser {
-            user.followedOrgIDs = followedOrgIDs
-            currentUser = user
-        }
+        let shouldFollow = !followedOrgIDs.contains(orgID)
+        applyFollow(orgID, isFollowing: shouldFollow)
+
+        guard !isPreviewMode else { return }
+
+        Task { await persistFollow(orgID, shouldFollow: shouldFollow) }
     }
 
     func isSaved(_ eventID: UUID) -> Bool {
@@ -201,10 +206,30 @@ final class AppSession {
     }
 
     func toggleSaveEvent(_ eventID: UUID) {
-        if savedEventIDs.contains(eventID) {
-            savedEventIDs.remove(eventID)
-        } else {
-            savedEventIDs.insert(eventID)
+        let shouldSave = !savedEventIDs.contains(eventID)
+        applySave(eventID, isSaved: shouldSave)
+
+        guard !isPreviewMode else { return }
+
+        Task { await persistSave(eventID, shouldSave: shouldSave) }
+    }
+
+    func retryEngagementLoad() async {
+        engagementError = nil
+        guard currentUser != nil else {
+            await retryProfileLoad()
+            return
+        }
+
+        let generation = authGeneration
+        do {
+            try await loadEngagement()
+            guard generation == authGeneration else { return }
+            phase = currentUser?.onboardingCompleted == true ? .main : .onboarding
+            Task { await catalog.refreshIfNeeded() }
+        } catch {
+            guard generation == authGeneration else { return }
+            engagementError = Self.engagementLoadFailedMessage
         }
     }
 
@@ -233,6 +258,7 @@ final class AppSession {
         let generation = authGeneration
         phase = .restoring
         authError = nil
+        engagementError = nil
 
         do {
             guard let userID = try await authService.validUserID() else {
@@ -267,8 +293,18 @@ final class AppSession {
 
         apply(profile: profile)
         isHandlingCallback = false
+        Task { await catalog.refreshIfNeeded() }
+
+        do {
+            try await loadEngagement()
+        } catch {
+            guard generation == authGeneration else { return }
+            engagementError = Self.engagementLoadFailedMessage
+            return
+        }
+
+        guard generation == authGeneration else { return }
         phase = profile.onboardingCompleted ? .main : .onboarding
-        await catalog.refreshIfNeeded()
     }
 
     private func apply(profile: ProfileRecord) {
@@ -278,9 +314,6 @@ final class AppSession {
         selectedYear = user.classYear
         selectedInterests = Set(profile.interests)
         onboardStep = 0
-        if !profile.onboardingCompleted {
-            savedEventIDs = []
-        }
     }
 
     private func completeOnboarding() async {
@@ -317,6 +350,7 @@ final class AppSession {
     }
 
     private func signedOut(to newPhase: AppPhase) {
+        authGeneration += 1
         catalog.reset()
         currentUser = nil
         isHandlingCallback = false
@@ -327,7 +361,99 @@ final class AppSession {
         selectedInterests = []
         followedOrgIDs = []
         savedEventIDs = []
+        engagementError = nil
         phase = newPhase
+    }
+
+    private func loadEngagement() async throws {
+        guard !isPreviewMode else { return }
+        guard let engagementService else {
+            throw SupabaseConfigError.missingConfiguration
+        }
+
+        async let follows = engagementService.fetchFollowedOrganizationIDs()
+        async let saves = engagementService.fetchSavedEventIDs()
+        let (followed, saved) = try await (follows, saves)
+        followedOrgIDs = followed
+        savedEventIDs = saved
+        syncFollowedIDsToCurrentUser()
+        engagementError = nil
+    }
+
+    private func persistFollow(_ orgID: UUID, shouldFollow: Bool) async {
+        let generation = authGeneration
+        guard let engagementService else {
+            guard generation == authGeneration else { return }
+            applyFollow(orgID, isFollowing: !shouldFollow)
+            engagementError = SupabaseConfigError.missingConfiguration.localizedDescription
+            return
+        }
+
+        do {
+            if shouldFollow {
+                try await engagementService.follow(organizationID: orgID)
+            } else {
+                try await engagementService.unfollow(organizationID: orgID)
+            }
+            guard generation == authGeneration else { return }
+            engagementError = nil
+        } catch {
+            guard generation == authGeneration else { return }
+            applyFollow(orgID, isFollowing: !shouldFollow)
+            engagementError = shouldFollow
+                ? "Couldn't follow organization. Try again."
+                : "Couldn't unfollow organization. Try again."
+        }
+    }
+
+    private func persistSave(_ eventID: UUID, shouldSave: Bool) async {
+        let generation = authGeneration
+        guard let engagementService else {
+            guard generation == authGeneration else { return }
+            applySave(eventID, isSaved: !shouldSave)
+            engagementError = SupabaseConfigError.missingConfiguration.localizedDescription
+            return
+        }
+
+        do {
+            if shouldSave {
+                try await engagementService.save(eventID: eventID)
+            } else {
+                try await engagementService.unsave(eventID: eventID)
+            }
+            guard generation == authGeneration else { return }
+            engagementError = nil
+        } catch {
+            guard generation == authGeneration else { return }
+            applySave(eventID, isSaved: !shouldSave)
+            engagementError = shouldSave
+                ? "Couldn't save. Try again."
+                : "Couldn't unsave. Try again."
+        }
+    }
+
+    private func applyFollow(_ orgID: UUID, isFollowing: Bool) {
+        if isFollowing {
+            followedOrgIDs.insert(orgID)
+        } else {
+            followedOrgIDs.remove(orgID)
+        }
+        syncFollowedIDsToCurrentUser()
+    }
+
+    private func applySave(_ eventID: UUID, isSaved: Bool) {
+        if isSaved {
+            savedEventIDs.insert(eventID)
+        } else {
+            savedEventIDs.remove(eventID)
+        }
+    }
+
+    private func syncFollowedIDsToCurrentUser() {
+        if var user = currentUser {
+            user.followedOrgIDs = followedOrgIDs
+            currentUser = user
+        }
     }
 
     private func startResendCooldown() {
@@ -349,10 +475,15 @@ final class AppSession {
 extension AppSession {
     static func preview() -> AppSession {
         let session = AppSession()
+        session.isPreviewMode = true
         session.catalog.usePreviewData(
             organizations: MockData.organizations,
             events: MockData.events
         )
+        let user = MockData.defaultUser()
+        session.currentUser = user
+        session.followedOrgIDs = user.followedOrgIDs
+        session.savedEventIDs = [MockData.IDs.evt1]
         return session
     }
 }

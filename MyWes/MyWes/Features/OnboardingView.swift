@@ -138,7 +138,12 @@ struct OnboardingView: View {
             Text("Get their events and updates on your Home feed.")
                 .font(Typography.bodySmall)
                 .foregroundStyle(Theme.secondaryText)
-                .padding(.bottom, 20)
+                .padding(.bottom, session.engagementError == nil ? 20 : 12)
+
+            if session.engagementError != nil {
+                EngagementErrorCaption()
+                    .padding(.bottom, 12)
+            }
 
             VStack(spacing: 10) {
                 CatalogStatusView(

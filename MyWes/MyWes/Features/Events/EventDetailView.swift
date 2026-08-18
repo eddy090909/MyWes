@@ -55,7 +55,12 @@ struct EventDetailView: View {
                             .padding(.bottom, 18)
 
                             saveButton
-                                .padding(.bottom, 20)
+                                .padding(.bottom, session.engagementError == nil ? 20 : 8)
+
+                            if session.engagementError != nil {
+                                EngagementErrorCaption()
+                                    .padding(.bottom, 20)
+                            }
 
                             Text(event.description)
                                 .font(.system(size: 14))
