@@ -46,19 +46,29 @@ struct AppLogoMark: View {
 struct PrimaryButton: View {
     let title: String
     var isEnabled: Bool = true
+    var isLoading: Bool = false
     let action: () -> Void
+
+    private var canTap: Bool { isEnabled && !isLoading }
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(Typography.button)
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(isEnabled ? Theme.cardinal : Theme.border)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.buttonRadius, style: .continuous))
+            ZStack {
+                if isLoading {
+                    ProgressView()
+                        .tint(.white)
+                } else {
+                    Text(title)
+                        .font(Typography.button)
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(canTap ? Theme.cardinal : Theme.border)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.buttonRadius, style: .continuous))
         }
-        .disabled(!isEnabled)
+        .disabled(!canTap)
         .buttonStyle(.plain)
     }
 }

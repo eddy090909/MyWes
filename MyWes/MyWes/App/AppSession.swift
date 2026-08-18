@@ -8,53 +8,58 @@ import Observation
 import SwiftUI
 
 enum AppPhase: Equatable {
+    case restoring
     case splash
     case signIn
-    case verify
+    case checkEmail
     case onboarding
     case main
+    case provisioningFailure
 }
 
 @Observable
 final class AppSession {
-    var phase: AppPhase
+    var phase: AppPhase = .restoring
     var currentUser: AppUser?
     var pendingEmail: String = ""
+    var authError: String?
 
-    // Onboarding draft
     var onboardStep: Int = 0
     var selectedYear: String?
     var selectedInterests: Set<String> = []
     var followedOrgIDs: Set<UUID> = []
     var savedEventIDs: Set<UUID> = []
 
-    init() {
-        let completed = UserDefaults.standard.bool(forKey: Self.onboardingKey)
-        if completed {
-            let user = MockData.defaultUser()
-            phase = .main
-            currentUser = user
-            followedOrgIDs = user.followedOrgIDs
-            savedEventIDs = []
-        } else {
-            phase = .splash
-            currentUser = nil
-        }
-    }
+    var isSendingLink = false
+    var isHandlingCallback = false
+    var isCompletingOnboarding = false
+    var resendCooldownRemaining = 0
 
-    private static let onboardingKey = "hasCompletedOnboarding"
-    /// Milestone 1 mock OTP. Production will replace this with Supabase email OTP.
-    static let mockVerificationCode = "123456"
-    private static let mockFirstName = "Alex"
+    private let authService: AuthService?
+    private let profileService: ProfileService?
+    private var authGeneration = 0
+    private var cooldownTask: Task<Void, Never>?
+    private var didStart = false
+
     private static let wesleyanEmailPattern = /^[a-z0-9._%+\-]+@wesleyan\.edu$/
+    private static let resendCooldownSeconds = 60
 
-    var hasCompletedOnboarding: Bool {
-        get { UserDefaults.standard.bool(forKey: Self.onboardingKey) }
-        set { UserDefaults.standard.set(newValue, forKey: Self.onboardingKey) }
+    init() {
+        if let client = try? SupabaseClientProvider.makeClient() {
+            authService = AuthService(client: client)
+            profileService = ProfileService(client: client)
+        } else {
+            authService = nil
+            profileService = nil
+        }
     }
 
     var savedEventCount: Int {
         savedEventIDs.count
+    }
+
+    var canResendLink: Bool {
+        resendCooldownRemaining == 0 && !isSendingLink
     }
 
     static func isValidWesleyanEmail(_ raw: String) -> Bool {
@@ -63,43 +68,104 @@ final class AppSession {
         return trimmed.wholeMatch(of: wesleyanEmailPattern) != nil
     }
 
+    func start() async {
+        guard !didStart else { return }
+        didStart = true
+        await restoreSession()
+    }
+
     func continueFromSplash() {
+        authError = nil
         phase = .signIn
     }
 
-    func submitWesleyanEmail(_ email: String) -> Bool {
+    func sendSignInLink(to email: String) async {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard Self.isValidWesleyanEmail(trimmed) else { return false }
+        guard Self.isValidWesleyanEmail(trimmed) else { return }
+        guard let authService else {
+            authError = SupabaseConfigError.missingConfiguration.localizedDescription
+            return
+        }
+
         pendingEmail = trimmed
-        phase = .verify
-        return true
+        isSendingLink = true
+        authError = nil
+        defer { isSendingLink = false }
+
+        do {
+            try await authService.sendMagicLink(to: trimmed)
+            phase = .checkEmail
+            startResendCooldown()
+        } catch {
+            authError = AuthUserFacingError.message(for: error)
+        }
+    }
+
+    func resendSignInLink() async {
+        guard canResendLink else { return }
+        await sendSignInLink(to: pendingEmail)
     }
 
     func returnToEmailEntry() {
+        authError = nil
+        isHandlingCallback = false
         phase = .signIn
     }
 
-    func verifyCode(_ code: String) -> Bool {
-        let digits = String(code.filter(\.isNumber).prefix(6))
-        guard digits.count == 6 else { return false }
-        guard digits == Self.mockVerificationCode else { return false }
-        guard !pendingEmail.isEmpty else { return false }
+    func handleAuthURL(_ url: URL) async {
+        guard AuthRedirect.isCallback(url) else { return }
+        guard let authService else {
+            signedOut(to: pendingEmail.isEmpty ? .signIn : .checkEmail)
+            authError = SupabaseConfigError.missingConfiguration.localizedDescription
+            return
+        }
 
-        currentUser = AppUser(
-            id: UUID(),
-            email: pendingEmail,
-            firstName: Self.mockFirstName,
-            classYear: nil,
-            interests: [],
-            followedOrgIDs: []
-        )
-        onboardStep = 0
-        selectedYear = nil
-        selectedInterests = []
-        followedOrgIDs = []
-        savedEventIDs = []
-        phase = .onboarding
-        return true
+        authGeneration += 1
+        let generation = authGeneration
+        isHandlingCallback = true
+        authError = nil
+        phase = .restoring
+
+        do {
+            let userID = try await authService.sessionUserID(from: url)
+            guard generation == authGeneration else { return }
+            try await loadProfileAndRoute(userID: userID, generation: generation)
+        } catch {
+            guard generation == authGeneration else { return }
+            await authService.signOut()
+            signedOut(to: pendingEmail.isEmpty ? .signIn : .checkEmail)
+            authError = AuthUserFacingError.message(for: error)
+        }
+    }
+
+    func retryProfileLoad() async {
+        authError = nil
+        guard let authService else {
+            signedOut(to: .signIn)
+            authError = SupabaseConfigError.missingConfiguration.localizedDescription
+            return
+        }
+
+        authGeneration += 1
+        let generation = authGeneration
+        phase = .restoring
+
+        do {
+            guard let userID = try await authService.validUserID() else {
+                signedOut(to: .splash)
+                return
+            }
+            try await loadProfileAndRoute(userID: userID, generation: generation)
+        } catch {
+            guard generation == authGeneration else { return }
+            signedOut(to: .signIn)
+            authError = AuthUserFacingError.message(for: error)
+        }
+    }
+
+    func signOutFromFailure() async {
+        await authService?.signOut()
+        signedOut(to: .signIn)
     }
 
     func toggleInterest(_ name: String) {
@@ -139,26 +205,135 @@ final class AppSession {
     }
 
     func onboardBack() {
+        authError = nil
         if onboardStep > 0 {
             onboardStep -= 1
         }
     }
 
     func onboardContinue() {
+        authError = nil
         if onboardStep < 2 {
             onboardStep += 1
         } else {
-            completeOnboarding()
+            Task { await completeOnboarding() }
         }
     }
 
-    private func completeOnboarding() {
-        guard var user = currentUser else { return }
-        user.classYear = selectedYear
-        user.interests = Array(selectedInterests).sorted()
-        user.followedOrgIDs = followedOrgIDs
+    private func restoreSession() async {
+        guard let authService else {
+            phase = .splash
+            return
+        }
+
+        let generation = authGeneration
+        phase = .restoring
+        authError = nil
+
+        do {
+            guard let userID = try await authService.validUserID() else {
+                guard generation == authGeneration else { return }
+                phase = .splash
+                return
+            }
+            try await loadProfileAndRoute(userID: userID, generation: generation)
+        } catch {
+            guard generation == authGeneration else { return }
+            await authService.signOut()
+            signedOut(to: .splash)
+            authError = AuthUserFacingError.message(for: error)
+        }
+    }
+
+    private func loadProfileAndRoute(userID: UUID, generation: Int) async throws {
+        guard let profileService else {
+            throw SupabaseConfigError.missingConfiguration
+        }
+
+        guard let profile = try await profileService.fetchProfile(userID: userID) else {
+            guard generation == authGeneration else { return }
+            currentUser = nil
+            isHandlingCallback = false
+            phase = .provisioningFailure
+            authError = "Your account was created, but your profile could not be loaded. This is a backend provisioning problem, not something the app can invent."
+            return
+        }
+
+        guard generation == authGeneration else { return }
+
+        apply(profile: profile)
+        isHandlingCallback = false
+        phase = profile.onboardingCompleted ? .main : .onboarding
+    }
+
+    private func apply(profile: ProfileRecord) {
+        let user = AppUser.fromProfile(profile, followedOrgIDs: followedOrgIDs)
         currentUser = user
-        hasCompletedOnboarding = true
-        phase = .main
+        pendingEmail = profile.email
+        selectedYear = user.classYear
+        selectedInterests = Set(profile.interests)
+        onboardStep = 0
+        if !profile.onboardingCompleted {
+            savedEventIDs = []
+        }
+    }
+
+    private func completeOnboarding() async {
+        guard let profileService else {
+            authError = SupabaseConfigError.missingConfiguration.localizedDescription
+            return
+        }
+        guard let user = currentUser else { return }
+        guard let yearText = selectedYear, let classYear = Int(yearText) else {
+            authError = "Choose a class year to continue."
+            return
+        }
+
+        isCompletingOnboarding = true
+        authError = nil
+        defer { isCompletingOnboarding = false }
+
+        do {
+            let profile = try await profileService.completeOnboarding(
+                userID: user.id,
+                classYear: classYear,
+                interests: Array(selectedInterests).sorted()
+            )
+            apply(profile: profile)
+            if var updated = currentUser {
+                updated.followedOrgIDs = followedOrgIDs
+                currentUser = updated
+            }
+            phase = .main
+        } catch {
+            authError = AuthUserFacingError.message(for: error)
+        }
+    }
+
+    private func signedOut(to newPhase: AppPhase) {
+        currentUser = nil
+        isHandlingCallback = false
+        isSendingLink = false
+        isCompletingOnboarding = false
+        onboardStep = 0
+        selectedYear = nil
+        selectedInterests = []
+        followedOrgIDs = []
+        savedEventIDs = []
+        phase = newPhase
+    }
+
+    private func startResendCooldown() {
+        cooldownTask?.cancel()
+        resendCooldownRemaining = Self.resendCooldownSeconds
+        cooldownTask = Task { [weak self] in
+            while let self, self.resendCooldownRemaining > 0, !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                if self.resendCooldownRemaining > 0 {
+                    self.resendCooldownRemaining -= 1
+                }
+            }
+        }
     }
 }

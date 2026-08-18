@@ -11,7 +11,7 @@ struct SignInView: View {
     @FocusState private var isEmailFocused: Bool
 
     private var canContinue: Bool {
-        AppSession.isValidWesleyanEmail(email)
+        AppSession.isValidWesleyanEmail(email) && !session.isSendingLink
     }
 
     var body: some View {
@@ -41,13 +41,27 @@ struct SignInView: View {
                     placeholder: "you@wesleyan.edu",
                     text: $email,
                     submitLabel: .continue,
-                    onSubmit: continueIfValid,
+                    onSubmit: sendLinkIfValid,
                     focus: $isEmailFocused
                 )
-                .padding(.bottom, 24)
+                .disabled(session.isSendingLink)
+                .padding(.bottom, session.authError == nil ? 24 : 10)
 
-                PrimaryButton(title: "Continue", isEnabled: canContinue) {
-                    continueIfValid()
+                if let authError = session.authError {
+                    Text(authError)
+                        .font(Typography.caption)
+                        .foregroundStyle(Theme.cardinal)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityAddTraits(.isStaticText)
+                        .padding(.bottom, 14)
+                }
+
+                PrimaryButton(
+                    title: "Send sign-in link",
+                    isEnabled: canContinue,
+                    isLoading: session.isSendingLink
+                ) {
+                    sendLinkIfValid()
                 }
 
                 Text("Only Wesleyan email addresses are eligible.")
@@ -69,9 +83,9 @@ struct SignInView: View {
         }
     }
 
-    private func continueIfValid() {
+    private func sendLinkIfValid() {
         guard canContinue else { return }
-        _ = session.submitWesleyanEmail(email)
+        Task { await session.sendSignInLink(to: email) }
     }
 }
 

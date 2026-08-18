@@ -11,19 +11,29 @@ struct RootView: View {
     var body: some View {
         Group {
             switch session.phase {
+            case .restoring:
+                RestoringSessionView()
             case .splash:
                 SplashView()
             case .signIn:
                 SignInView()
-            case .verify:
-                VerificationView()
+            case .checkEmail:
+                CheckEmailView()
             case .onboarding:
                 OnboardingView()
             case .main:
                 MainTabView()
+            case .provisioningFailure:
+                ProvisioningFailureView()
             }
         }
         .animation(.easeInOut(duration: 0.2), value: session.phase)
+        .task {
+            await session.start()
+        }
+        .onOpenURL { url in
+            Task { await session.handleAuthURL(url) }
+        }
     }
 }
 

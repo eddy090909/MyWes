@@ -9,7 +9,7 @@ struct HomeView: View {
     @Environment(AppSession.self) private var session
 
     private var firstName: String {
-        session.currentUser?.firstName ?? "Alex"
+        session.currentUser?.firstName ?? "Cardinal"
     }
 
     private var greeting: String {

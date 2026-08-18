@@ -12,6 +12,29 @@ struct AppUser: Identifiable, Equatable {
     var classYear: String?
     var interests: [String]
     var followedOrgIDs: Set<UUID>
+    var onboardingCompleted: Bool = false
+
+    static func displayFirstName(from fullName: String?) -> String {
+        let trimmed = fullName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard let firstWord = trimmed.split(whereSeparator: \.isWhitespace).first,
+              !firstWord.isEmpty
+        else {
+            return "Cardinal"
+        }
+        return String(firstWord)
+    }
+
+    static func fromProfile(_ profile: ProfileRecord, followedOrgIDs: Set<UUID>) -> AppUser {
+        AppUser(
+            id: profile.id,
+            email: profile.email,
+            firstName: displayFirstName(from: profile.fullName),
+            classYear: profile.classYear.map(String.init),
+            interests: profile.interests,
+            followedOrgIDs: followedOrgIDs,
+            onboardingCompleted: profile.onboardingCompleted
+        )
+    }
 }
 
 struct Event: Identifiable, Equatable {

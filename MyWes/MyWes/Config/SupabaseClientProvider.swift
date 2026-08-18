@@ -11,6 +11,12 @@ enum SupabaseClientProvider {
     /// Session storage uses supabase-swift's Apple-platform default (`KeychainLocalStorage`).
     static func makeClient() throws -> SupabaseClient {
         let url = try SupabaseConfig.url()
-        return SupabaseClient(supabaseURL: url, supabaseKey: SupabaseConfig.anonKey)
+        return SupabaseClient(
+            supabaseURL: url,
+            supabaseKey: SupabaseConfig.anonKey,
+            options: SupabaseClientOptions(
+                auth: .init(redirectToURL: AuthRedirect.callbackURL)
+            )
+        )
     }
 }

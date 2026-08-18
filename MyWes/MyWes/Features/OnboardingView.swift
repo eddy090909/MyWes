@@ -38,6 +38,14 @@ struct OnboardingView: View {
 
             Spacer(minLength: 16)
 
+            if let authError = session.authError {
+                Text(authError)
+                    .font(Typography.caption)
+                    .foregroundStyle(Theme.cardinal)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 12)
+            }
+
             HStack(spacing: 10) {
                 if session.onboardStep > 0 {
                     Button {
@@ -55,9 +63,14 @@ struct OnboardingView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .disabled(session.isCompletingOnboarding)
                 }
 
-                PrimaryButton(title: primaryLabel, isEnabled: canAdvance) {
+                PrimaryButton(
+                    title: primaryLabel,
+                    isEnabled: canAdvance,
+                    isLoading: session.isCompletingOnboarding
+                ) {
                     session.onboardContinue()
                 }
             }
