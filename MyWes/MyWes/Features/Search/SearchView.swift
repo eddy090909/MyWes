@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct SearchView: View {
+    @Environment(AppSession.self) private var session
     @State private var query = ""
     @FocusState private var isSearchFocused: Bool
 
@@ -13,8 +14,12 @@ struct SearchView: View {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var results: (events: [Event], organizations: [Organization], questions: [Question]) {
-        MockData.search(query: query)
+    private var catalogMatches: (events: [Event], organizations: [Organization]) {
+        session.catalog.search(query: query)
+    }
+
+    private var questionResults: [Question] {
+        MockData.search(query: query).questions
     }
 
     private var hasQuery: Bool {
@@ -22,7 +27,7 @@ struct SearchView: View {
     }
 
     private var hasResults: Bool {
-        !results.events.isEmpty || !results.organizations.isEmpty || !results.questions.isEmpty
+        !catalogMatches.events.isEmpty || !catalogMatches.organizations.isEmpty || !questionResults.isEmpty
     }
 
     var body: some View {
@@ -30,46 +35,8 @@ struct SearchView: View {
             VStack(alignment: .leading, spacing: 16) {
                 searchField
 
-                if !hasQuery {
-                    Text("Try “dining”, “internship”, or an org name.")
-                        .font(Typography.bodySmall)
-                        .foregroundStyle(Theme.secondaryText)
-                        .padding(.top, 4)
-                } else if hasResults {
-                    if !results.events.isEmpty {
-                        searchSection(title: "Events") {
-                            ForEach(results.events) { event in
-                                NavigationLink(value: AppRoute.event(event.id)) {
-                                    SearchResultRow(title: event.title)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-
-                    if !results.organizations.isEmpty {
-                        searchSection(title: "Organizations") {
-                            ForEach(results.organizations) { organization in
-                                NavigationLink(value: AppRoute.organization(organization.id)) {
-                                    SearchResultRow(title: organization.name)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-
-                    if !results.questions.isEmpty {
-                        searchSection(title: "AskWes") {
-                            ForEach(results.questions) { question in
-                                SearchQuestionRow(question: question)
-                            }
-                        }
-                    }
-                } else {
-                    Text("No results for “\(trimmedQuery)”")
-                        .font(Typography.bodySmall)
-                        .foregroundStyle(Theme.secondaryText)
-                        .padding(.top, 4)
+                CatalogStatusView(catalog: session.catalog, overlayPadding: 0) {
+                    searchResults
                 }
             }
             .padding(.horizontal, 20)
@@ -103,6 +70,51 @@ struct SearchView: View {
                     .stroke(Theme.border, lineWidth: 1)
             )
             .accessibilityLabel("Search")
+    }
+
+    @ViewBuilder
+    private var searchResults: some View {
+        if !hasQuery {
+            Text("Try “dining”, “internship”, or an org name.")
+                .font(Typography.bodySmall)
+                .foregroundStyle(Theme.secondaryText)
+                .padding(.top, 4)
+        } else if hasResults {
+            if !catalogMatches.events.isEmpty {
+                searchSection(title: "Events") {
+                    ForEach(catalogMatches.events) { event in
+                        NavigationLink(value: AppRoute.event(event.id)) {
+                            SearchResultRow(title: event.title)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            if !catalogMatches.organizations.isEmpty {
+                searchSection(title: "Organizations") {
+                    ForEach(catalogMatches.organizations) { organization in
+                        NavigationLink(value: AppRoute.organization(organization.id)) {
+                            SearchResultRow(title: organization.name)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            if !questionResults.isEmpty {
+                searchSection(title: "AskWes") {
+                    ForEach(questionResults) { question in
+                        SearchQuestionRow(question: question)
+                    }
+                }
+            }
+        } else {
+            Text("No results for “\(trimmedQuery)”")
+                .font(Typography.bodySmall)
+                .foregroundStyle(Theme.secondaryText)
+                .padding(.top, 4)
+        }
     }
 
     private func searchSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -154,5 +166,5 @@ private struct SearchQuestionRow: View {
         SearchView()
             .appDestinations()
     }
-    .environment(AppSession())
+    .environment(AppSession.preview())
 }

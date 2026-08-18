@@ -35,6 +35,8 @@ final class AppSession {
     var isCompletingOnboarding = false
     var resendCooldownRemaining = 0
 
+    let catalog: CampusCatalog
+
     private let authService: AuthService?
     private let profileService: ProfileService?
     private var authGeneration = 0
@@ -48,9 +50,11 @@ final class AppSession {
         if let client = try? SupabaseClientProvider.makeClient() {
             authService = AuthService(client: client)
             profileService = ProfileService(client: client)
+            catalog = CampusCatalog(client: client)
         } else {
             authService = nil
             profileService = nil
+            catalog = CampusCatalog(client: nil)
         }
     }
 
@@ -264,6 +268,7 @@ final class AppSession {
         apply(profile: profile)
         isHandlingCallback = false
         phase = profile.onboardingCompleted ? .main : .onboarding
+        await catalog.refreshIfNeeded()
     }
 
     private func apply(profile: ProfileRecord) {
@@ -305,12 +310,14 @@ final class AppSession {
                 currentUser = updated
             }
             phase = .main
+            await catalog.refreshIfNeeded()
         } catch {
             authError = AuthUserFacingError.message(for: error)
         }
     }
 
     private func signedOut(to newPhase: AppPhase) {
+        catalog.reset()
         currentUser = nil
         isHandlingCallback = false
         isSendingLink = false
@@ -337,3 +344,16 @@ final class AppSession {
         }
     }
 }
+
+#if DEBUG
+extension AppSession {
+    static func preview() -> AppSession {
+        let session = AppSession()
+        session.catalog.usePreviewData(
+            organizations: MockData.organizations,
+            events: MockData.events
+        )
+        return session
+    }
+}
+#endif

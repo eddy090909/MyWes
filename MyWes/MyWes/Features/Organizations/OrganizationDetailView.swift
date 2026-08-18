@@ -11,11 +11,11 @@ struct OrganizationDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     private var organization: Organization? {
-        MockData.organization(id: orgID)
+        session.catalog.organization(id: orgID)
     }
 
     private var upcomingEvents: [Event] {
-        MockData.events(hostedBy: orgID)
+        session.catalog.events(hostedBy: orgID)
     }
 
     private var isFollowing: Bool {
@@ -94,7 +94,11 @@ struct OrganizationDetailView: View {
                 }
                 .background(Theme.background.ignoresSafeArea())
             } else {
-                ContentUnavailableView("Organization unavailable", systemImage: "person.3")
+                CatalogItemStatusView(
+                    catalog: session.catalog,
+                    title: "Organization unavailable",
+                    systemImage: "person.3"
+                )
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -182,5 +186,5 @@ struct OrganizationDetailView: View {
         OrganizationDetailView(orgID: MockData.IDs.org1)
             .appDestinations()
     }
-    .environment(AppSession())
+    .environment(AppSession.preview())
 }

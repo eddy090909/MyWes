@@ -9,31 +9,33 @@ struct SavedEventsView: View {
     @Environment(AppSession.self) private var session
 
     private var savedEvents: [Event] {
-        MockData.events.filter { session.isSaved($0.id) }
+        session.catalog.savedEvents(ids: session.savedEventIDs)
     }
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 10) {
-                ForEach(savedEvents) { event in
-                    NavigationLink(value: AppRoute.event(event.id)) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(event.title)
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(Theme.ink)
-                            Text("\(event.dateLabel) · \(event.location)")
-                                .font(Typography.caption)
-                                .foregroundStyle(Theme.secondaryText)
+            CatalogStatusView(catalog: session.catalog, overlayPadding: 0) {
+                LazyVStack(spacing: 10) {
+                    ForEach(savedEvents) { event in
+                        NavigationLink(value: AppRoute.event(event.id)) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(event.title)
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(Theme.ink)
+                                Text("\(event.dateLabel) · \(event.location)")
+                                    .font(Typography.caption)
+                                    .foregroundStyle(Theme.secondaryText)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                            .cardChrome()
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
-                        .cardChrome()
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
-                }
 
-                if savedEvents.isEmpty {
-                    EmptyStateText(message: "No saved events yet.")
+                    if savedEvents.isEmpty {
+                        EmptyStateText(message: "No saved events yet.")
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -52,5 +54,5 @@ struct SavedEventsView: View {
         SavedEventsView()
             .appDestinations()
     }
-    .environment(AppSession())
+    .environment(AppSession.preview())
 }

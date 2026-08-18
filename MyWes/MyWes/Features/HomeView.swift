@@ -110,18 +110,34 @@ struct HomeView: View {
             }
             .padding(.horizontal, Theme.screenPadding)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(MockData.homeEvents) { event in
-                        NavigationLink(value: AppRoute.event(event.id)) {
-                            EventCard(event: event)
+            CatalogStatusView(
+                catalog: session.catalog,
+                emptyMessage: "No upcoming events.",
+                overlayPadding: 0
+            ) {
+                if session.catalog.homeEvents.isEmpty {
+                    EmptyStateText(message: "No upcoming events.")
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(session.catalog.homeEvents) { event in
+                                NavigationLink(value: AppRoute.event(event.id)) {
+                                    EventCard(event: event)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, Theme.screenPadding)
+                        .padding(.bottom, 6)
                     }
                 }
-                .padding(.horizontal, Theme.screenPadding)
-                .padding(.bottom, 6)
             }
+            .padding(
+                .horizontal,
+                session.catalog.status == .loaded && !session.catalog.homeEvents.isEmpty
+                    ? 0
+                    : Theme.screenPadding
+            )
         }
     }
 
@@ -154,12 +170,25 @@ struct HomeView: View {
         }
     }
 
+    @ViewBuilder
     private var followedOrgs: some View {
+        switch session.catalog.status {
+        case .loaded, .empty:
+            followedOrgsContent
+        case .idle, .loading, .failed:
+            EmptyView()
+        }
+    }
+
+    private var followedOrgsContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "From Organizations You Follow")
                 .padding(.horizontal, Theme.screenPadding)
 
-            let updates = MockData.updates(for: session.followedOrgIDs)
+            let updates = MockData.updates(
+                for: session.followedOrgIDs,
+                organizations: session.catalog.organizations
+            )
             if updates.isEmpty {
                 Text("Follow organizations to see updates here.")
                     .font(Typography.bodySmall)
@@ -185,5 +214,5 @@ struct HomeView: View {
         HomeView()
             .appDestinations()
     }
-    .environment(AppSession())
+    .environment(AppSession.preview())
 }

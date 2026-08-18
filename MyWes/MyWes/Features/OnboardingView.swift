@@ -141,36 +141,42 @@ struct OnboardingView: View {
                 .padding(.bottom, 20)
 
             VStack(spacing: 10) {
-                ForEach(MockData.onboardingOrganizations) { org in
-                    HStack(spacing: 12) {
-                        Circle()
-                            .fill(Theme.blueAccent.opacity(0.25))
-                            .frame(width: 40, height: 40)
-                            .overlay(
-                                Text(String(org.name.prefix(1)))
+                CatalogStatusView(
+                    catalog: session.catalog,
+                    emptyMessage: "No organizations to follow yet.",
+                    overlayPadding: 0
+                ) {
+                    ForEach(session.catalog.onboardingOrganizations) { org in
+                        HStack(spacing: 12) {
+                            Circle()
+                                .fill(Theme.blueAccent.opacity(0.25))
+                                .frame(width: 40, height: 40)
+                                .overlay(
+                                    Text(String(org.name.prefix(1)))
+                                        .font(.system(size: 15, weight: .bold))
+                                        .foregroundStyle(Theme.ink)
+                                )
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(org.name)
                                     .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(Theme.ink)
-                            )
+                                    .lineLimit(1)
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(org.name)
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(Theme.ink)
-                                .lineLimit(1)
+                                Text(org.category)
+                                    .font(Typography.caption)
+                                    .foregroundStyle(Theme.secondaryText)
+                            }
 
-                            Text(org.category)
-                                .font(Typography.caption)
-                                .foregroundStyle(Theme.secondaryText)
+                            Spacer(minLength: 8)
+
+                            FollowButton(isFollowing: session.followedOrgIDs.contains(org.id)) {
+                                session.toggleFollow(org.id)
+                            }
                         }
-
-                        Spacer(minLength: 8)
-
-                        FollowButton(isFollowing: session.followedOrgIDs.contains(org.id)) {
-                            session.toggleFollow(org.id)
-                        }
+                        .padding(12)
+                        .cardChrome()
                     }
-                    .padding(12)
-                    .cardChrome()
                 }
             }
         }
@@ -221,5 +227,5 @@ private struct FlowLayout: Layout {
 
 #Preview {
     OnboardingView()
-        .environment(AppSession())
+        .environment(AppSession.preview())
 }

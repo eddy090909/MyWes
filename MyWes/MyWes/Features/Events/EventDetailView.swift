@@ -11,11 +11,11 @@ struct EventDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     private var event: Event? {
-        MockData.event(id: eventID)
+        session.catalog.event(id: eventID)
     }
 
     private var host: Organization? {
-        event.flatMap { MockData.organization(id: $0.orgID) }
+        event.flatMap { session.catalog.organization(id: $0.orgID) }
     }
 
     private var isSaved: Bool {
@@ -69,7 +69,11 @@ struct EventDetailView: View {
                 }
                 .background(Theme.background.ignoresSafeArea())
             } else {
-                ContentUnavailableView("Event unavailable", systemImage: "calendar.badge.exclamationmark")
+                CatalogItemStatusView(
+                    catalog: session.catalog,
+                    title: "Event unavailable",
+                    systemImage: "calendar.badge.exclamationmark"
+                )
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -147,5 +151,5 @@ struct EventDetailView: View {
         EventDetailView(eventID: MockData.IDs.evt1)
             .appDestinations()
     }
-    .environment(AppSession())
+    .environment(AppSession.preview())
 }

@@ -11,52 +11,67 @@ struct OrganizationsListView: View {
 
     private var filteredOrganizations: [Organization] {
         if selectedCategory == "All" {
-            return MockData.organizations
+            return session.catalog.organizations
         }
-        return MockData.organizations.filter { $0.category == selectedCategory }
+        return session.catalog.organizations.filter { $0.category == selectedCategory }
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(MockData.organizationCategories, id: \.self) { category in
-                            FilterChip(
-                                title: category,
-                                isSelected: selectedCategory == category
-                            ) {
-                                selectedCategory = category
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
+                CatalogStatusView(
+                    catalog: session.catalog,
+                    emptyMessage: "No organizations yet."
+                ) {
+                    loadedContent
                 }
-                .padding(.top, 8)
-                .padding(.bottom, 12)
-
-                LazyVStack(spacing: 10) {
-                    ForEach(filteredOrganizations) { organization in
-                        OrganizationRow(
-                            organization: organization,
-                            isFollowing: session.isFollowing(organization.id)
-                        ) {
-                            session.toggleFollow(organization.id)
-                        }
-                    }
-
-                    if filteredOrganizations.isEmpty {
-                        EmptyStateText(message: "No organizations match this filter.")
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 32)
             }
         }
         .background(Theme.background.ignoresSafeArea())
         .navigationTitle("Organizations")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+    }
+
+    private var loadedContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(session.catalog.organizationFilterCategories, id: \.self) { category in
+                        FilterChip(
+                            title: category,
+                            isSelected: selectedCategory == category
+                        ) {
+                            selectedCategory = category
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 12)
+
+            LazyVStack(spacing: 10) {
+                ForEach(filteredOrganizations) { organization in
+                    OrganizationRow(
+                        organization: organization,
+                        isFollowing: session.isFollowing(organization.id)
+                    ) {
+                        session.toggleFollow(organization.id)
+                    }
+                }
+
+                if filteredOrganizations.isEmpty {
+                    EmptyStateText(
+                        message: selectedCategory == "All"
+                            ? "No organizations yet."
+                            : "No organizations match this filter."
+                    )
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 32)
+        }
     }
 }
 
@@ -65,5 +80,5 @@ struct OrganizationsListView: View {
         OrganizationsListView()
             .appDestinations()
     }
-    .environment(AppSession())
+    .environment(AppSession.preview())
 }

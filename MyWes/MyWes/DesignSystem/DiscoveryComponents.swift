@@ -190,6 +190,79 @@ struct EmptyStateText: View {
     }
 }
 
+struct CatalogStatusView<Content: View>: View {
+    let catalog: CampusCatalog
+    var emptyMessage: String? = nil
+    var overlayPadding: CGFloat = 16
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        switch catalog.status {
+        case .idle, .loading:
+            ProgressView()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+                .padding(.horizontal, overlayPadding)
+        case .empty:
+            Group {
+                if let emptyMessage {
+                    EmptyStateText(message: emptyMessage)
+                } else {
+                    content()
+                }
+            }
+            .padding(.horizontal, emptyMessage == nil ? 0 : overlayPadding)
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 10) {
+                Text(message)
+                    .font(Typography.bodySmall)
+                    .foregroundStyle(Theme.secondaryText)
+                Button("Retry") {
+                    Task { await catalog.refresh() }
+                }
+                .font(Typography.label)
+                .foregroundStyle(Theme.cardinal)
+                .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 8)
+            .padding(.horizontal, overlayPadding)
+        case .loaded:
+            content()
+        }
+    }
+}
+
+struct CatalogItemStatusView: View {
+    let catalog: CampusCatalog
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        switch catalog.status {
+        case .idle, .loading:
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 10) {
+                Text(message)
+                    .font(Typography.bodySmall)
+                    .foregroundStyle(Theme.secondaryText)
+                Button("Retry") {
+                    Task { await catalog.refresh() }
+                }
+                .font(Typography.label)
+                .foregroundStyle(Theme.cardinal)
+                .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(20)
+        case .empty, .loaded:
+            ContentUnavailableView(title, systemImage: systemImage)
+        }
+    }
+}
+
 struct SeeAllLink: View {
     var body: some View {
         Text("See all")

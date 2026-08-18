@@ -133,61 +133,61 @@ enum MockData {
             id: IDs.evt1,
             title: "Fall Formal Kickoff",
             category: "Social",
-            dateLabel: "Fri, Sep 12",
-            time: "8:00 PM",
             location: "Beckham Hall",
             orgID: IDs.org7,
-            description: "Kick off the semester with music, food trucks, and the whole class of 2027. Dress: campus casual."
+            description: "Kick off the semester with music, food trucks, and the whole class of 2027. Dress: campus casual.",
+            startAt: CampusTime.date(year: 2026, month: 9, day: 12, hour: 20, minute: 0),
+            endAt: CampusTime.date(year: 2026, month: 9, day: 12, hour: 23, minute: 0)
         ),
         Event(
             id: IDs.evt2,
             title: "AskWes Live: Internship Panel",
             category: "Academic",
-            dateLabel: "Wed, Sep 17",
-            time: "6:30 PM",
             location: "PAC Rm 001",
             orgID: IDs.org6,
-            description: "Upperclassmen share how they landed summer internships in tech, finance, and research."
+            description: "Upperclassmen share how they landed summer internships in tech, finance, and research.",
+            startAt: CampusTime.date(year: 2026, month: 9, day: 17, hour: 18, minute: 30),
+            endAt: CampusTime.date(year: 2026, month: 9, day: 17, hour: 20, minute: 0)
         ),
         Event(
             id: IDs.evt3,
             title: "Midnight Breakfast",
             category: "Dining",
-            dateLabel: "Thu, Dec 10",
-            time: "10:00 PM",
             location: "Usdan Marketplace",
             orgID: IDs.org8,
-            description: "Free breakfast-for-dinner before finals, hosted by Dining Services and WSA."
+            description: "Free breakfast-for-dinner before finals, hosted by Dining Services and WSA.",
+            startAt: CampusTime.date(year: 2026, month: 12, day: 10, hour: 22, minute: 0),
+            endAt: CampusTime.date(year: 2026, month: 12, day: 11, hour: 1, minute: 0)
         ),
         Event(
             id: IDs.evt4,
             title: "WesFest: First-Gen Mixer",
             category: "Community",
-            dateLabel: "Sat, Sep 20",
-            time: "2:00 PM",
             location: "Fauver Field",
             orgID: IDs.org4,
-            description: "Meet other first-generation students and alumni mentors over lawn games and lunch."
+            description: "Meet other first-generation students and alumni mentors over lawn games and lunch.",
+            startAt: CampusTime.date(year: 2026, month: 9, day: 20, hour: 14, minute: 0),
+            endAt: CampusTime.date(year: 2026, month: 9, day: 20, hour: 16, minute: 0)
         ),
         Event(
             id: IDs.evt5,
             title: "Battle of the Bands",
             category: "Social",
-            dateLabel: "Sat, Oct 4",
-            time: "9:00 PM",
             location: "Eclectic",
             orgID: IDs.org2,
-            description: "Six student bands compete for a slot at Spring Fling."
+            description: "Six student bands compete for a slot at Spring Fling.",
+            startAt: CampusTime.date(year: 2026, month: 10, day: 4, hour: 21, minute: 0),
+            endAt: CampusTime.date(year: 2026, month: 10, day: 4, hour: 23, minute: 30)
         ),
         Event(
             id: IDs.evt6,
             title: "Study Abroad Info Night",
             category: "Academic",
-            dateLabel: "Tue, Sep 23",
-            time: "5:00 PM",
             location: "Allbritton 311",
             orgID: IDs.org3,
-            description: "Learn about semester and year-long programs, funding, and how credits transfer."
+            description: "Learn about semester and year-long programs, funding, and how credits transfer.",
+            startAt: CampusTime.date(year: 2026, month: 9, day: 23, hour: 17, minute: 0),
+            endAt: CampusTime.date(year: 2026, month: 9, day: 23, hour: 18, minute: 30)
         ),
     ]
 
@@ -245,15 +245,20 @@ enum MockData {
         Array(questions.sorted { $0.voteCount > $1.voteCount }.prefix(3))
     }
 
-    static func updates(for followedOrgIDs: Set<UUID>) -> [OrgUpdate] {
-        organizations
+    static func updateText(for orgID: UUID) -> String {
+        orgUpdateCopy[orgID] ?? "New update posted."
+    }
+
+    static func updates(for followedOrgIDs: Set<UUID>, organizations: [Organization]? = nil) -> [OrgUpdate] {
+        let source = organizations ?? Self.organizations
+        return source
             .filter { followedOrgIDs.contains($0.id) }
             .prefix(3)
             .map { org in
                 OrgUpdate(
                     orgID: org.id,
                     orgName: org.name,
-                    updateText: orgUpdateCopy[org.id] ?? "New update posted."
+                    updateText: updateText(for: org.id)
                 )
             }
     }
