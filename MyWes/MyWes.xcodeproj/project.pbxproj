@@ -49,15 +49,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		D918375F3029C00600231E27 /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				D918375A3029C00100231E27 /* Config.xcconfig */,
-				D91837603029C00700231E27 /* Secrets.example.xcconfig */,
-			);
-			path = Config;
-			sourceTree = "<group>";
-		};
 		D918372B3029AB5000231E27 = {
 			isa = PBXGroup;
 			children = (
@@ -73,6 +64,15 @@
 				D91837343029AB5000231E27 /* MyWes.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D918375F3029C00600231E27 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				D918375A3029C00100231E27 /* Config.xcconfig */,
+				D91837603029C00700231E27 /* Secrets.example.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

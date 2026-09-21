@@ -1,4 +1,5 @@
 // Empty defaults so the app target still builds without local secrets.
+// Secrets.xcconfig must write URLs as https:/$()/host because // starts a comment.
 SUPABASE_URL =
 SUPABASE_ANON_KEY =
 
