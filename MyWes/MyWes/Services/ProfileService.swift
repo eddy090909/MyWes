@@ -6,15 +6,6 @@
 import Foundation
 import Supabase
 
-nonisolated struct ProfileRecord: Codable, Equatable, Sendable {
-    var id: UUID
-    var email: String
-    var fullName: String?
-    var classYear: Int?
-    var interests: [String]
-    var onboardingCompleted: Bool
-}
-
 struct ProfileService {
     let client: SupabaseClient
 
@@ -54,18 +45,6 @@ struct ProfileService {
             .execute()
             .value
     }
-}
-
-nonisolated private struct ProfileOnboardingUpdate: Encodable {
-    var classYear: Int
-    var interests: [String]
-    var onboardingCompleted: Bool
-}
-
-nonisolated private struct ProfileEdit: Encodable {
-    var fullName: String
-    var classYear: Int
-    var interests: [String]
 }
 
 nonisolated enum ProfileEditError: LocalizedError {

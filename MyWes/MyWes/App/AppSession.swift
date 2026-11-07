@@ -343,7 +343,19 @@ final class AppSession {
         }
 
         phase = .restoring
-        try await loadProfileAndRoute(userID: session.user.id, generation: generation)
+        pendingEmail = email
+        do {
+            try await loadProfileAndRoute(userID: session.user.id, generation: generation)
+        } catch {
+            guard generation == authGeneration else { return }
+            // OAuth has succeeded. Keep the valid session so a profile/network
+            // failure can be retried without sending the student through Duo again.
+            isHandlingCallback = false
+            phase = .provisioningFailure
+            authError = error is DecodingError
+                ? "Google sign-in succeeded, but MyWes couldn't read your campus profile. Please update the app and retry."
+                : "Google sign-in succeeded, but your campus profile couldn't be loaded. Check your connection and retry."
+        }
     }
 
     private func loadProfileAndRoute(userID: UUID, generation: Int) async throws {

@@ -16,7 +16,7 @@
 - Resumed the paused, existing linked Supabase project; dashboard subsequently reported Healthy.
 - Read hosted migration history: all seven original migrations were present.
 - A dry run identified only `202611070001_campus_mvp.sql`; applied that migration successfully via the Supabase CLI. No catalog sample seed or Git push was performed.
-- Hosted Google provider is disabled and Client IDs / Client Secret fields are empty. OAuth setup is a real remaining dependency, not a code-test success.
+- At the initial hosted checkpoint, Google was disabled with empty client fields. This has since been configured; see the login-fix checkpoint below.
 - Anonymous sign-ins are disabled and email confirmation is enabled in hosted settings.
 
 - Final Debug simulator build also passed after all session and preview fixes.
@@ -26,7 +26,7 @@
 - Hosted redirect allowlist contains the exact `mywes://auth-callback` URL.
 
 ## Still required before declaring the MVP working
-- Configure the missing Google OAuth web client and enable the Google provider. Redirect allowlist and Before User Created hook have been verified.
+- Complete live login verification now that Google OAuth and the Wesleyan test account are configured. Redirect allowlist and Before User Created hook have been verified.
 - Sign in through Google with a real Wesleyan account, cancel login, and verify a non-Wesleyan account is rejected by the server.
 - Verify first-login profile provisioning, onboarding persistence, relaunch/session restore, and sign-out followed by relaunch.
 - Browse real events and organizations; save/unsave and follow/unfollow, relaunch, verify persistence and failure rollback.
@@ -36,3 +36,18 @@
 - Complete physical-device testing. Debug and Release simulator builds passed. No automated UI test target exists yet.
 
 No hosted OAuth or physical-device success is claimed by the local tests.
+
+## Login failure fix — November 7, 2026
+
+The user completed Wesleyan Google/Duo authentication but the app returned to sign-in with a generic error. Code inspection found missing database CodingKeys: the SDK's default PostgREST coders preserve field names, while profile, catalog, Q&A, and dining records use camelCase Swift properties against snake_case database columns. Profile decoding fails on `onboardingCompleted`; profile/onboarding and answer writes also used incorrect column names.
+
+- Added tests that compile the production wire models directly. Before the mapping fix: 1 passed, 9 failed. After: all 10 passed, covering six response types and four request payloads.
+- Added explicit database field mappings without changing Auth's coders or the engagement service's existing mappings.
+- Moved Foundation-only wire records into `Models/DatabaseRecords.swift` so tests use the same definitions as the app.
+- Profile fetch/decode failures after successful OAuth now preserve the valid session and show Profile unavailable with a retry, rather than signing the student out.
+- Debug and Release simulator builds passed for the corrected code. Installed over the existing simulator app, preserving its data.
+- Google provider is now enabled with the expected client ID and a stored secret; skip-nonce and allow-missing-email remain off.
+- Added `ezerihun@wesleyan.edu` to Google's test-user list after explicit approval; verified the saved list shows one test user.
+- Authenticated success after installing this fix still needs a real user login check. No successful end-to-end login is claimed here.
+
+Use the project in this workspace for further Xcode runs. The original `/Users/edomiasabebe/Developer/MyWes` checkout was preserved and still contains older code.

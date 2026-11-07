@@ -6,17 +6,6 @@
 import Foundation
 import Supabase
 
-struct EventRecord: Codable, Equatable, Sendable {
-    var id: UUID
-    var orgId: UUID
-    var title: String
-    var category: String
-    var description: String
-    var location: String
-    var startAt: Date
-    var endAt: Date?
-}
-
 struct EventService {
     let client: SupabaseClient
 

@@ -6,16 +6,6 @@
 import Foundation
 import Supabase
 
-struct OrganizationRecord: Codable, Equatable, Sendable {
-    var id: UUID
-    var name: String
-    var category: String
-    var description: String
-    var memberCount: Int
-    var contactEmail: String?
-    var instagramHandle: String?
-}
-
 struct OrganizationService {
     let client: SupabaseClient
 

@@ -1,6 +1,15 @@
 import Foundation
 
 nonisolated struct CampusQuestion: Codable, Identifiable, Equatable, Sendable {
+    enum CodingKeys: String, CodingKey {
+        case id
+        case authorId = "author_id"
+        case title
+        case body
+        case topic
+        case createdAt = "created_at"
+    }
+
     var id: UUID
     var authorId: UUID
     var title: String
@@ -10,6 +19,14 @@ nonisolated struct CampusQuestion: Codable, Identifiable, Equatable, Sendable {
 }
 
 nonisolated struct CampusAnswer: Codable, Identifiable, Equatable, Sendable {
+    enum CodingKeys: String, CodingKey {
+        case id
+        case questionId = "question_id"
+        case authorId = "author_id"
+        case body
+        case createdAt = "created_at"
+    }
+
     var id: UUID
     var questionId: UUID
     var authorId: UUID
@@ -30,6 +47,17 @@ nonisolated struct DiningPeriod: Codable, Equatable, Sendable {
 }
 
 nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case location
+        case weeklyHours = "weekly_hours"
+        case notes
+        case sourceUrl = "source_url"
+        case verifiedOn = "verified_on"
+        case validThrough = "valid_through"
+    }
+
     var id: UUID
     var name: String
     var location: String

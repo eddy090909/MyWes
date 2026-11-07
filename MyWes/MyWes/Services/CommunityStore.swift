@@ -2,16 +2,6 @@ import Foundation
 import Observation
 import Supabase
 
-nonisolated private struct NewQuestion: Encodable {
-    let title: String
-    let body: String
-    let topic: String
-}
-nonisolated private struct NewAnswer: Encodable {
-    let questionId: UUID
-    let body: String
-}
-
 @Observable
 final class CommunityStore {
     private(set) var questions: [CampusQuestion] = []

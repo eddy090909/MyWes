@@ -4,7 +4,7 @@ A SwiftUI campus app for Wesleyan students, backed by Supabase Auth and PostgreS
 
 ## Status
 
-This is an MVP under verification, not an App Store release. Events, organizations, saves, follows, onboarding, and Google OAuth were already integrated. The November 2026 implementation adds real Supabase Q&A, dining schedules, profile editing, and sign-out. The MVP migration has been applied to the existing hosted project. Google login is still blocked by missing OAuth provider configuration; live flows must be verified before describing the full MVP as working. See [verification](docs/VERIFICATION.md).
+This is an MVP under verification, not an App Store release. Events, organizations, saves, follows, onboarding, and Google OAuth were already integrated. The November 2026 implementation adds real Supabase Q&A, dining schedules, profile editing, and sign-out. The MVP migration has been applied to the existing hosted project. Google OAuth is configured in the hosted project; live flows must be verified before describing the full MVP as working. See [verification](docs/VERIFICATION.md).
 
 There is no guest login or production authentication bypass. Sample data is used in SwiftUI previews. Onboarding offers static year and interest choices.
 
@@ -42,6 +42,13 @@ Dining logic (actual production models):
 ```sh
 swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/CampusContent.swift Tests/DiningTests.swift -o /tmp/mywes-dining-tests
 /tmp/mywes-dining-tests
+```
+
+Database response/request formats (actual production wire models):
+
+```sh
+swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/DatabaseRecords.swift MyWes/MyWes/Models/CampusContent.swift Tests/DatabaseCodingTests.swift -o /tmp/mywes-coding-tests
+/tmp/mywes-coding-tests
 ```
 
 Database migrations and permissions (isolated PostgreSQL via PGlite):
