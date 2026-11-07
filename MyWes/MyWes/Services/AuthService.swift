@@ -40,8 +40,12 @@ struct AuthService {
         }
     }
 
+    func signOutChecked() async throws {
+        try await client.auth.signOut(scope: .local)
+    }
+
     func signOut() async {
-        try? await client.auth.signOut()
+        try? await client.auth.signOut(scope: .local)
     }
 }
 

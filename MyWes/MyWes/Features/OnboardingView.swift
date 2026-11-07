@@ -230,7 +230,9 @@ private struct FlowLayout: Layout {
     }
 }
 
+#if DEBUG
 #Preview {
     OnboardingView()
         .environment(AppSession.preview())
 }
+#endif

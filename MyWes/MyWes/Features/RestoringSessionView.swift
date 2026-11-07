@@ -47,7 +47,9 @@ struct RestoringSessionView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     RestoringSessionView()
         .environment(AppSession.preview())
 }
+#endif

@@ -18,9 +18,9 @@ struct SearchView: View {
         session.catalog.search(query: query)
     }
 
-    private var questionResults: [Question] {
-        MockData.search(query: query).questions
-    }
+    @State private var questionResults: [CampusQuestion] = []
+    @State private var questionError: String?
+    @State private var searchingQuestions = false
 
     private var hasQuery: Bool {
         !trimmedQuery.isEmpty
@@ -35,9 +35,12 @@ struct SearchView: View {
             VStack(alignment: .leading, spacing: 16) {
                 searchField
 
-                CatalogStatusView(catalog: session.catalog, overlayPadding: 0) {
-                    searchResults
+                if case .failed = session.catalog.status {
+                    CampusRetry(message: "Couldn't load events and organizations.") { await session.catalog.refresh() }
                 }
+                if searchingQuestions { ProgressView("Searching AskWes…") }
+                if let questionError { Text(questionError).font(Typography.bodySmall).foregroundStyle(.red) }
+                searchResults
             }
             .padding(.horizontal, 20)
             .padding(.top, 6)
@@ -48,6 +51,23 @@ struct SearchView: View {
         .toolbar(.visible, for: .navigationBar)
         .navigationTitle("Search")
         .scrollDismissesKeyboard(.interactively)
+        .task(id: trimmedQuery) {
+            questionResults = []
+            questionError = nil
+            guard hasQuery else { searchingQuestions = false; return }
+            searchingQuestions = true
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+                let result = try await session.community.searchQuestions(trimmedQuery)
+                try Task.checkCancellation()
+                questionResults = result
+                searchingQuestions = false
+            } catch {
+                guard !Task.isCancelled else { return }
+                questionError = "Couldn't search AskWes. Change your search to retry."
+                searchingQuestions = false
+            }
+        }
         .onAppear {
             isSearchFocused = true
         }
@@ -105,11 +125,13 @@ struct SearchView: View {
             if !questionResults.isEmpty {
                 searchSection(title: "AskWes") {
                     ForEach(questionResults) { question in
-                        SearchQuestionRow(question: question)
+                        NavigationLink(value: AppRoute.question(question.id)) {
+                            CampusQuestionRow(question: question)
+                        }.buttonStyle(.plain)
                     }
                 }
             }
-        } else {
+        } else if !searchingQuestions && questionError == nil {
             Text("No results for “\(trimmedQuery)”")
                 .font(Typography.bodySmall)
                 .foregroundStyle(Theme.secondaryText)
@@ -129,38 +151,7 @@ struct SearchView: View {
     }
 }
 
-private struct SearchQuestionRow: View {
-    let question: Question
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(question.title)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Theme.ink)
-            Text("\(question.topic)")
-                .font(Typography.caption)
-                .foregroundStyle(Theme.secondaryText)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(Theme.background)
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(Theme.border)
-                .frame(width: 3)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Theme.border.opacity(0.7), lineWidth: 1)
-        )
-        .allowsHitTesting(false)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isStaticText)
-        .accessibilityLabel("\(question.title), \(question.topic), AskWes result")
-    }
-}
-
+#if DEBUG
 #Preview {
     NavigationStack {
         SearchView()
@@ -168,3 +159,4 @@ private struct SearchQuestionRow: View {
     }
     .environment(AppSession.preview())
 }
+#endif

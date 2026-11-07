@@ -40,7 +40,9 @@ struct SplashView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     SplashView()
         .environment(AppSession())
 }
+#endif

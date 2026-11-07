@@ -35,7 +35,9 @@ struct RootView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     RootView()
         .environment(AppSession())
 }
+#endif

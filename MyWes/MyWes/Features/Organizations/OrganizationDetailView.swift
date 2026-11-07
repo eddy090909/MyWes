@@ -186,6 +186,7 @@ struct OrganizationDetailView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         OrganizationDetailView(orgID: MockData.IDs.org1)
@@ -193,3 +194,4 @@ struct OrganizationDetailView: View {
     }
     .environment(AppSession.preview())
 }
+#endif

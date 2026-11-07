@@ -29,7 +29,7 @@ struct MainTabView: View {
             .tag(1)
 
             NavigationStack {
-                PlaceholderTabView(title: "Dining")
+                DiningView()
             }
             .tabItem {
                 Label("Dining", systemImage: "fork.knife")
@@ -37,7 +37,8 @@ struct MainTabView: View {
             .tag(2)
 
             NavigationStack {
-                PlaceholderTabView(title: "AskWes")
+                AskWesView()
+                    .appDestinations()
             }
             .tabItem {
                 Label("AskWes", systemImage: "bubble.left.and.bubble.right.fill")
@@ -45,7 +46,8 @@ struct MainTabView: View {
             .tag(3)
 
             NavigationStack {
-                PlaceholderTabView(title: "Profile")
+                ProfileView()
+                    .appDestinations()
             }
             .tabItem {
                 Label("Profile", systemImage: "person.fill")
@@ -56,7 +58,9 @@ struct MainTabView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     MainTabView()
         .environment(AppSession.preview())
 }
+#endif

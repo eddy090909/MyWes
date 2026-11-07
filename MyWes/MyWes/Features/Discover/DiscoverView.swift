@@ -78,6 +78,7 @@ struct DiscoverView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         DiscoverView()
@@ -85,3 +86,4 @@ struct DiscoverView: View {
     }
     .environment(AppSession.preview())
 }
+#endif

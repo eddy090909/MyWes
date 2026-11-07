@@ -81,6 +81,7 @@ struct OrganizationsListView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         OrganizationsListView()
@@ -88,3 +89,4 @@ struct OrganizationsListView: View {
     }
     .environment(AppSession.preview())
 }
+#endif

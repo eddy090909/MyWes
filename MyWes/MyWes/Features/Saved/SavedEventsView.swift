@@ -53,6 +53,7 @@ struct SavedEventsView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         SavedEventsView()
@@ -60,3 +61,4 @@ struct SavedEventsView: View {
     }
     .environment(AppSession.preview())
 }
+#endif

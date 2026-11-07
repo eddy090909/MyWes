@@ -71,6 +71,11 @@ struct HomeView: View {
         }
         .background(Theme.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
+        .task { await session.community.refresh() }
+        .refreshable {
+            await session.catalog.refresh()
+            await session.community.refresh()
+        }
     }
 
     private var header: some View {
@@ -149,31 +154,39 @@ struct HomeView: View {
 
     private var diningToday: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Dining Today")
-                .padding(.horizontal, Theme.screenPadding)
-
-            HStack(spacing: 10) {
-                ForEach(MockData.homeDining) { location in
-                    DiningStatusCard(location: location)
+            SectionHeader(title: "Dining Today") {
+                NavigationLink(value: AppRoute.dining) { SeeAllLink() }
+            }
+            if let error = session.community.diningError {
+                CampusRetry(message: error) { await session.community.refresh() }
+            } else if session.community.dining.isEmpty {
+                Text(session.community.isLoading ? "Loading dining hours…" : "No dining schedules published yet.")
+                    .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
+            }
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                ForEach(session.community.dining.prefix(2)) { venue in
+                    DiningVenueCard(venue: venue, date: context.date)
                 }
             }
-            .padding(.horizontal, Theme.screenPadding)
-            .accessibilityElement(children: .contain)
-        }
+        }.padding(.horizontal, Theme.screenPadding)
     }
 
     private var popularAskWes: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Popular on AskWes")
-                .padding(.horizontal, Theme.screenPadding)
-
-            VStack(spacing: Theme.listGap) {
-                ForEach(MockData.popularQuestions) { question in
-                    QuestionRow(question: question)
-                }
+            SectionHeader(title: "Latest on AskWes") {
+                NavigationLink(value: AppRoute.askWes) { SeeAllLink() }
             }
-            .padding(.horizontal, Theme.screenPadding)
-        }
+            if let error = session.community.questionError {
+                CampusRetry(message: error) { await session.community.refresh() }
+            } else if session.community.questions.isEmpty {
+                Text(session.community.isLoading ? "Loading questions…" : "No questions yet. Ask your campus a question.")
+                    .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
+            }
+            ForEach(session.community.questions.prefix(3)) { question in
+                NavigationLink(value: AppRoute.question(question.id)) { CampusQuestionRow(question: question) }
+                    .buttonStyle(.plain)
+            }
+        }.padding(.horizontal, Theme.screenPadding)
     }
 
     @ViewBuilder
@@ -188,23 +201,20 @@ struct HomeView: View {
 
     private var followedOrgsContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "From Organizations You Follow")
+            SectionHeader(title: "Events from Organizations You Follow")
                 .padding(.horizontal, Theme.screenPadding)
 
-            let updates = MockData.updates(
-                for: session.followedOrgIDs,
-                organizations: session.catalog.organizations
-            )
+            let updates = session.catalog.upcomingEvents.filter { session.followedOrgIDs.contains($0.orgID) }
             if updates.isEmpty {
-                Text("Follow organizations to see updates here.")
+                Text("No upcoming events from followed organizations.")
                     .font(Typography.bodySmall)
                     .foregroundStyle(Theme.secondaryText)
                     .padding(.horizontal, Theme.screenPadding)
             } else {
                 VStack(spacing: Theme.listGap) {
-                    ForEach(updates) { update in
-                        NavigationLink(value: AppRoute.organization(update.orgID)) {
-                            OrgUpdateRow(update: update)
+                    ForEach(updates) { event in
+                        NavigationLink(value: AppRoute.event(event.id)) {
+                            SearchResultRow(title: event.title)
                         }
                         .buttonStyle(.plain)
                     }
@@ -215,6 +225,7 @@ struct HomeView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         HomeView()
@@ -222,3 +233,4 @@ struct HomeView: View {
     }
     .environment(AppSession.preview())
 }
+#endif

@@ -46,7 +46,9 @@ struct ProvisioningFailureView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     ProvisioningFailureView()
         .environment(AppSession())
 }
+#endif

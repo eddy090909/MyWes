@@ -28,6 +28,12 @@ struct ProfileService {
             .value
     }
 
+    func updateProfile(userID: UUID, name: String, year: Int, interests: [String]) async throws -> ProfileRecord {
+        try await client.from("profiles")
+            .update(ProfileEdit(fullName: name, classYear: year, interests: interests))
+            .eq("id", value: userID).select().single().execute().value
+    }
+
     func completeOnboarding(
         userID: UUID,
         classYear: Int,
@@ -54,4 +60,17 @@ nonisolated private struct ProfileOnboardingUpdate: Encodable {
     var classYear: Int
     var interests: [String]
     var onboardingCompleted: Bool
+}
+
+nonisolated private struct ProfileEdit: Encodable {
+    var fullName: String
+    var classYear: Int
+    var interests: [String]
+}
+
+nonisolated enum ProfileEditError: LocalizedError {
+    case invalidInput
+    var errorDescription: String? {
+        "Use a name of up to 100 characters, a year from 2020–2040, and up to 20 interests of 60 characters each."
+    }
 }

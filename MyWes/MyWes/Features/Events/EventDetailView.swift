@@ -151,6 +151,7 @@ struct EventDetailView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         EventDetailView(eventID: MockData.IDs.evt1)
@@ -158,3 +159,4 @@ struct EventDetailView: View {
     }
     .environment(AppSession.preview())
 }
+#endif

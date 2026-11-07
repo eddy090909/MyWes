@@ -390,6 +390,7 @@ struct OrgUpdateRow: View {
     }
 }
 
+#if DEBUG
 #Preview("Components") {
     ScrollView {
         VStack(spacing: 16) {
@@ -404,3 +405,4 @@ struct OrgUpdateRow: View {
         .padding()
     }
 }
+#endif

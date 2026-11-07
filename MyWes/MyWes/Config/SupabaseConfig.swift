@@ -41,7 +41,8 @@ enum SupabaseConfig {
 
     static func url() throws -> URL {
         try validate()
-        guard let url = URL(string: urlString) else {
+        guard let url = URL(string: urlString), url.scheme == "https",
+              url.host != nil, url.user == nil, url.password == nil else {
             throw SupabaseConfigError.invalidURL
         }
         return url
@@ -63,6 +64,7 @@ enum SupabaseConfig {
 
     /// Best-effort guard against pasting the dashboard service_role JWT into the client.
     private static func looksLikeServiceRoleKey(_ key: String) -> Bool {
+        if key.hasPrefix("sb_secret_") { return true }
         let segments = key.split(separator: ".")
         guard segments.count >= 2 else { return false }
 

@@ -6,6 +6,9 @@
 import SwiftUI
 
 enum AppRoute: Hashable {
+    case question(UUID)
+    case dining
+    case askWes
     case search
     case events
     case event(UUID)
@@ -18,6 +21,12 @@ extension View {
     func appDestinations() -> some View {
         navigationDestination(for: AppRoute.self) { route in
             switch route {
+            case .question(let id):
+                QuestionDetailView(questionID: id)
+            case .dining:
+                DiningView()
+            case .askWes:
+                AskWesView()
             case .search:
                 SearchView()
             case .events:

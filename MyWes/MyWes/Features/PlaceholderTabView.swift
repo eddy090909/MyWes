@@ -25,8 +25,10 @@ struct PlaceholderTabView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         PlaceholderTabView(title: "Discover")
     }
 }
+#endif

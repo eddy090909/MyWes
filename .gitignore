@@ -230,3 +230,6 @@ __marimo__/
 
 # Preserved local design handoff (outside app target)
 .local-assets/
+
+# Local database test dependency
+Tests/node_modules/

@@ -74,7 +74,9 @@ struct SignInView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     SignInView()
         .environment(AppSession())
 }
+#endif

@@ -73,6 +73,7 @@ struct EventsListView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         EventsListView()
@@ -80,3 +81,4 @@ struct EventsListView: View {
     }
     .environment(AppSession.preview())
 }
+#endif
