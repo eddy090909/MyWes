@@ -184,6 +184,7 @@ struct QuestionDetailView: View {
     @State private var busy = false
     @State private var deletingQuestion = false
     @State private var deletingAnswer: UUID?
+    @State private var showingAnswerDeletion = false
 
     var body: some View {
         ScrollView {
@@ -202,16 +203,16 @@ struct QuestionDetailView: View {
                 }
             }
         }
-        .confirmationDialog("Delete your answer?", isPresented: Binding<Bool>(get: { deletingAnswer != nil }, set: { if !$0 { deletingAnswer = nil } }), titleVisibility: .visible) {
-            if let id = deletingAnswer {
-                Button("Delete answer", role: .destructive) {
-                    Task {
-                        busy = true
-                        defer { busy = false }
-                        do { try await session.community.deleteAnswer(id: id); answers.removeAll { $0.id == id } }
-                        catch { self.error = "Couldn't delete the answer. Please retry." }
-                        deletingAnswer = nil
-                    }
+        .confirmationDialog("Delete your answer?", isPresented: $showingAnswerDeletion, titleVisibility: .visible, presenting: deletingAnswer) { id in
+            Button("Delete answer", role: .destructive) {
+                Task {
+                    busy = true
+                    defer { busy = false; deletingAnswer = nil }
+                    do {
+                        try await session.community.deleteAnswer(id: id)
+                        answers.removeAll { $0.id == id }
+                        error = nil
+                    } catch { self.error = "Couldn't delete the answer. Please retry." }
                 }
             }
         }
@@ -250,7 +251,10 @@ struct QuestionDetailView: View {
                             Text(answer.body).textSelection(.enabled)
                             Text(answer.createdAt, style: .date).font(Typography.caption)
                             if answer.authorId == session.currentUser?.id {
-                                Button("Delete answer", role: .destructive) { deletingAnswer = answer.id }.disabled(busy)
+                                Button("Delete answer", role: .destructive) {
+                                    deletingAnswer = answer.id
+                                    showingAnswerDeletion = true
+                                }.disabled(busy)
                             }
                         }.frame(maxWidth: .infinity, alignment: .leading).padding(14)
                             .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).stroke(Theme.border))

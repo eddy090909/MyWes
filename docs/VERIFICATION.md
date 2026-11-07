@@ -1,63 +1,54 @@
-# MVP verification checkpoint — November 7, 2026
+# MyWes verification — November 7, 2026
 
-## Completed local checks
+## Live simulator results
 
-- Original checkout copied in full from `/Users/edomiasabebe/Developer/MyWes`; active work is in the current workspace's `MyWes` folder. Original checkout remains unchanged.
-- All 23 design handoff files preserved with matching SHA-256 hashes, outside the synchronized app source folder.
-- UserInterfaceState untracked, local file preserved; Secrets.xcconfig ignored and absent from Git history.
-- Credential-pattern scan examined 113 historical blobs with no private-key, JWT, GitHub-token, or secret-key pattern matches. This is a scoped scan, not an absolute guarantee.
-- Debug simulator build passed with the new tabs and services; Release simulator build also passed after guarding preview code. No design HTML/JS in the app bundle. ProfileRecord actor-isolation warning fixed.
-- Production dining model checks passed for overnight service, exact boundaries, validity dates, Eastern Time, DST, and malformed day counts.
-- All migrations applied to isolated PostgreSQL with synthetic Auth roles. 37 assertions passed for anonymous denial, profile ownership/identity protection, catalog write protection, own-row follows/saves, Q&A authorship/deletion/cascade, and Wesleyan signup hook acceptance/rejection.
-- GitHub read-only check confirmed `eddy090909/MyWes` is private. No push or visibility change performed.
+Tested the signed app on iPhone 17 / iOS 26.5 against the existing hosted Supabase project.
 
-## Hosted checkpoint
+- The user completed Wesleyan Google/Duo login and reported success; authenticated Home was then observed directly in Device Hub.
+- Restarted the app and observed authenticated Home without another Google/Duo prompt. Repeated after installing the Q&A correction: session restoration still succeeded.
+- Loaded event details, host organization details, and the Saved Events surface from the hosted catalog.
+- Saved Midnight Breakfast and followed Wesleyan Dining. Restarted the app: Home showed one saved event and an event from the followed organization. Detail screens retained Saved / Following.
+- Un-saved the test event and unfollowed Wesleyan Dining afterward. Verified Saved Events is empty and Dining is back to Follow. The pre-existing WesWings Radio follow was preserved.
+- Catalog search for `dining` returned Midnight Breakfast and Wesleyan Dining. AskWes title search queried the server, returned the disposable question, and opened its detail.
+- With explicit approval, posted one disposable question and answer. Restarted the app, searched, and loaded both from Supabase. Deleted the answer and question afterward; verified No answers yet, then No questions yet and no search results for the test title.
+- Profile loaded the existing year (2028), interests (Sports), email, and followed organizations. Saved the existing values unchanged and observed Profile saved. This verifies the write/response path; a changed-name/year round trip was not exercised.
+- Dining displayed all three published locations, locations' descriptions, regular hours, schedule status, source links, verification dates, and validity dates. Runtime calendar/expiry edge cases are additionally covered by the local model checks.
 
-- Resumed the paused, existing linked Supabase project; dashboard subsequently reported Healthy.
-- Read hosted migration history: all seven original migrations were present.
-- A dry run identified only `202611070001_campus_mvp.sql`; applied that migration successfully via the Supabase CLI. No catalog sample seed or Git push was performed.
-- At the initial hosted checkpoint, Google was disabled with empty client fields. This has since been configured; see the login-fix checkpoint below.
-- Anonymous sign-ins are disabled and email confirmation is enabled in hosted settings.
+Sign-out/relaunch is awaiting the user's preference because it will require another login. No physical iPhone test, fresh-account onboarding walkthrough, offline rollback UI test, login-cancellation check, or hosted second-account ownership attack was performed in this checkpoint. Cross-user ownership and domain restrictions were tested in isolated PostgreSQL, as described below.
 
-- Final Debug simulator build also passed after all session and preview fixes.
-- Installed on the iPhone 17 / iOS 26.5 simulator; `simctl launch` returned a process ID successfully. This is a launch smoke check, not authenticated UI verification.
-- Both Debug and Release app bundles were inspected: no design HTML/JS or design handoff paths.
-- Hosted `hook_restrict_wesleyan_email` is ENABLED under Before User Created.
-- Hosted redirect allowlist contains the exact `mywes://auth-callback` URL.
+## Build and regression checks
 
-## Still required before declaring the MVP working
-- Complete live login verification now that Google OAuth and the Wesleyan test account are configured. Redirect allowlist and Before User Created hook have been verified.
-- Sign in through Google with a real Wesleyan account, cancel login, and verify a non-Wesleyan account is rejected by the server.
-- Verify first-login profile provisioning, onboarding persistence, relaunch/session restore, and sign-out followed by relaunch.
-- Browse real events and organizations; save/unsave and follow/unfollow, relaunch, verify persistence and failure rollback.
-- Post and answer a question, search for it, relaunch, verify persistence; use a second account to verify cross-user deletion is rejected.
-- Verify dining schedule display and official links on a simulator and iPhone, including expired schedule handling.
-- Edit name/year/interests and verify after relaunch.
-- Complete physical-device testing. Debug and Release simulator builds passed. No automated UI test target exists yet.
+- Signed Debug and Release simulator builds pass, including the Q&A confirmation correction. Signing uses Xcode's local simulator identity (`CODE_SIGN_IDENTITY=-`), not a new developer account.
+- Production database wire-model tests: before the field-mapping fix, 1 passed / 9 failed; after the fix, all 10 passed. These cover six response formats and four write payloads, compiled from the same Foundation-only models used by the app.
+- Authentication-error regression checks pass for missing verifier, unrelated HTTP 400/403, domain denial, disabled provider, rate limiting, and secure-storage failure.
+- Production dining checks pass for overnight service, closing boundaries, schedule validity, Eastern Time, DST, and malformed day counts.
+- Applied all SQL migrations in isolated PostgreSQL with synthetic Auth roles/users. All 37 permission/persistence checks passed: anonymous denial, profile identity/ownership, catalog write protection, own-row follows/saves, Q&A authorship/deletion/cascade, and Wesleyan hook acceptance/rejection.
+- Both app bundles were inspected: no design HTML/JS or handoff paths. No automated Xcode UI test target exists; the simulator flows above were observed through Device Hub.
 
-No hosted OAuth or physical-device success is claimed by the local tests.
+Local tests do not establish physical-device behavior or hosted second-account denial.
 
-## Login failure fix — November 7, 2026
+## Hosted configuration
 
-The user completed Wesleyan Google/Duo authentication but the app returned to sign-in with a generic error. Code inspection found missing database CodingKeys: the SDK's default PostgREST coders preserve field names, while profile, catalog, Q&A, and dining records use camelCase Swift properties against snake_case database columns. Profile decoding fails on `onboardingCompleted`; profile/onboarding and answer writes also used incorrect column names.
+- Resumed the original paused Supabase project and observed Healthy.
+- Verified all seven original migrations were already applied. Dry run identified only `202611070001_campus_mvp.sql`; applied it and verified matching hosted migration history. Did not run the sample catalog seed during this work.
+- Google Cloud project `mywes-514007` has the MyWes consent screen and MyWes Supabase web OAuth client. The owner entered the secret directly in Supabase.
+- Supabase Google provider enabled, expected client ID and stored secret present. Skip nonce checks and allow-missing-email remain off.
+- Exact app redirect `mywes://auth-callback` is allowed. The enabled Before User Created hook is `public.hook_restrict_wesleyan_email`.
+- Google audience remains External / Testing. Added the approved Wesleyan account as a test user and verified the saved list. Other students need test-user access until the Google app is prepared for production.
+- Hosted anonymous sign-ins are off; email confirmation is on. The hosted Email provider was observed enabled; local CLI email signup is disabled for this Google-only app. Hosted Email-provider hardening remains a separate configuration item.
 
-- Added tests that compile the production wire models directly. Before the mapping fix: 1 passed, 9 failed. After: all 10 passed, covering six response types and four request payloads.
-- Added explicit database field mappings without changing Auth's coders or the engagement service's existing mappings.
-- Moved Foundation-only wire records into `Models/DatabaseRecords.swift` so tests use the same definitions as the app.
-- Profile fetch/decode failures after successful OAuth now preserve the valid session and show Profile unavailable with a retry, rather than signing the student out.
-- Debug and Release simulator builds passed for the corrected code. Installed over the existing simulator app, preserving its data.
-- Google provider is now enabled with the expected client ID and a stored secret; skip-nonce and allow-missing-email remain off.
-- Added `ezerihun@wesleyan.edu` to Google's test-user list after explicit approval; verified the saved list shows one test user.
-- Authenticated success after installing this fix still needs a real user login check. No successful end-to-end login is claimed here.
+## Bugs found and corrected
 
-Use the project in this workspace for further Xcode runs. The original `/Users/edomiasabebe/Developer/MyWes` checkout was preserved and still contains older code.
+1. **Database field names:** several models used camelCase while PostgreSQL returns snake_case. Explicit CodingKeys now cover profiles, onboarding/profile writes, events, organizations, Q&A, and dining. Auth's coders and engagement's existing keys were preserved. Profile-loading failures after OAuth preserve the valid session and show a retry screen.
+2. **Simulator signing / PKCE:** an earlier compile-only bundle could not retain the login verifier. Hosted logs showed `/token` HTTP 400 for missing auth-code/verifier, not a domain rejection. Rebuilt with proper local signing and added a synthetic Keychain write/read/remove check before OAuth. The signed app passed it. No insecure storage fallback was introduced.
+3. **Misleading errors:** HTTP 400/403 alone no longer produce a Wesleyan-only message. Specific server domain errors still do; PKCE/storage/provider failures have distinct messages.
+4. **Answer confirmation:** live cleanup initially dismissed the dialog without deleting the answer. Separated the selected answer ID from the dialog's visibility state. Retested successfully against Supabase and removed both approved disposable entries.
+5. **Release previews:** preview-only helpers were referenced by unguarded previews. Debug guards now keep those references out of Release compilation.
 
-## PKCE/signing correction — November 7, 2026
+## Repository and file preservation
 
-- Hosted Auth logs at 03:08 EST reported `/token` HTTP 400: both the auth code and code verifier must be non-empty. This was incorrectly labeled as a Wesleyan email rejection by the app's blanket 400/403 handling.
-- The earlier 02:43 EST attempt had `/token` HTTP 200, `/profiles` HTTP 200, then logout, consistent with the previously reproduced profile-decoding failure.
-- The installed compile-check bundle had a linker-only signature (`Identifier=MyWes`, unbound Info.plist, no sealed resources). Rebuilt with Xcode's normal local signing: `Identifier=app.mywes.MyWes`, bound Info.plist, sealed resources.
-- Added a synthetic Keychain write/read/remove preflight before OAuth. The signed app passed that check and opened accounts.google.com in Device Hub; this verifies local secure storage, not completed OAuth.
-- Missing verifier, unrelated HTTP 400/403, disabled provider, domain restriction, rate limiting, and secure-storage errors have regression coverage. A status code alone no longer labels a user as non-Wesleyan.
-- Keychain storage, PKCE, nonce checks, and the server-side Wesleyan gate remain in place. No insecure storage fallback was introduced.
-- Signed Debug and Release builds passed. Live login after this correction still requires the user's Google/password/Duo interaction.
+- Work was copied in full from `/Users/edomiasabebe/Developer/MyWes`; that original checkout was preserved and contains older code. Use the current workspace's MyWes project for further Xcode runs.
+- Preserved all 23 local design handoff files with matching SHA-256 hashes in ignored `.local-assets/`, outside the synchronized app target. Untracked Xcode user state while keeping the file on disk.
+- Secrets.xcconfig is ignored, untracked, and absent from Git history. Scoped credential-pattern scan of the initial 113 historical blobs found no matches; staged fixes were scanned too. No secret was added to the repository.
+- With explicit approval, pushed the first three checkpoint commits and made `eddy090909/MyWes` public. Subsequent fixes remain local pending separate push approval.
+- Verified all original 14 pushed commit authors are Edomias Zerihun and GitHub's contributor list contained only eddy090909. Subsequent local commits preserve that Git identity without added co-author attribution.
