@@ -19,14 +19,20 @@
 - Hosted Google provider is disabled and Client IDs / Client Secret fields are empty. OAuth setup is a real remaining dependency, not a code-test success.
 - Anonymous sign-ins are disabled and email confirmation is enabled in hosted settings.
 
+- Final Debug simulator build also passed after all session and preview fixes.
+- Installed on the iPhone 17 / iOS 26.5 simulator; `simctl launch` returned a process ID successfully. This is a launch smoke check, not authenticated UI verification.
+- Both Debug and Release app bundles were inspected: no design HTML/JS or design handoff paths.
+- Hosted `hook_restrict_wesleyan_email` is ENABLED under Before User Created.
+- Hosted redirect allowlist contains the exact `mywes://auth-callback` URL.
+
 ## Still required before declaring the MVP working
-- Verify Google provider configuration, exact redirect allowlist, and enabled Before User Created hook in the hosted dashboard.
+- Configure the missing Google OAuth web client and enable the Google provider. Redirect allowlist and Before User Created hook have been verified.
 - Sign in through Google with a real Wesleyan account, cancel login, and verify a non-Wesleyan account is rejected by the server.
 - Verify first-login profile provisioning, onboarding persistence, relaunch/session restore, and sign-out followed by relaunch.
 - Browse real events and organizations; save/unsave and follow/unfollow, relaunch, verify persistence and failure rollback.
 - Post and answer a question, search for it, relaunch, verify persistence; use a second account to verify cross-user deletion is rejected.
 - Verify dining schedule display and official links on a simulator and iPhone, including expired schedule handling.
 - Edit name/year/interests and verify after relaunch.
-- Complete Release build and physical-device testing. No automated UI test target exists yet.
+- Complete physical-device testing. Debug and Release simulator builds passed. No automated UI test target exists yet.
 
 No hosted OAuth or physical-device success is claimed by the local tests.
