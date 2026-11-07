@@ -31,10 +31,10 @@ There is no guest login or production authentication bypass. Sample data is used
 
 ## Checks
 
-Build without changing signing identity:
+Build with local simulator signing (required for live Keychain/PKCE login checks):
 
 ```sh
-xcodebuild -project MyWes/MyWes.xcodeproj -scheme MyWes -sdk iphonesimulator -configuration Debug -derivedDataPath /tmp/MyWesMVPDerivedData CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project MyWes/MyWes.xcodeproj -scheme MyWes -sdk iphonesimulator -configuration Debug -derivedDataPath /tmp/MyWesMVPDerivedData CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES build
 ```
 
 Dining logic (actual production models):
@@ -49,6 +49,13 @@ Database response/request formats (actual production wire models):
 ```sh
 swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/DatabaseRecords.swift MyWes/MyWes/Models/CampusContent.swift Tests/DatabaseCodingTests.swift -o /tmp/mywes-coding-tests
 /tmp/mywes-coding-tests
+```
+
+Authentication error classification:
+
+```sh
+swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/AuthFailureMessage.swift Tests/AuthFailureTests.swift -o /tmp/mywes-auth-failure-tests
+/tmp/mywes-auth-failure-tests
 ```
 
 Database migrations and permissions (isolated PostgreSQL via PGlite):

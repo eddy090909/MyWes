@@ -51,3 +51,13 @@ The user completed Wesleyan Google/Duo authentication but the app returned to si
 - Authenticated success after installing this fix still needs a real user login check. No successful end-to-end login is claimed here.
 
 Use the project in this workspace for further Xcode runs. The original `/Users/edomiasabebe/Developer/MyWes` checkout was preserved and still contains older code.
+
+## PKCE/signing correction — November 7, 2026
+
+- Hosted Auth logs at 03:08 EST reported `/token` HTTP 400: both the auth code and code verifier must be non-empty. This was incorrectly labeled as a Wesleyan email rejection by the app's blanket 400/403 handling.
+- The earlier 02:43 EST attempt had `/token` HTTP 200, `/profiles` HTTP 200, then logout, consistent with the previously reproduced profile-decoding failure.
+- The installed compile-check bundle had a linker-only signature (`Identifier=MyWes`, unbound Info.plist, no sealed resources). Rebuilt with Xcode's normal local signing: `Identifier=app.mywes.MyWes`, bound Info.plist, sealed resources.
+- Added a synthetic Keychain write/read/remove preflight before OAuth. The signed app passed that check and opened accounts.google.com in Device Hub; this verifies local secure storage, not completed OAuth.
+- Missing verifier, unrelated HTTP 400/403, disabled provider, domain restriction, rate limiting, and secure-storage errors have regression coverage. A status code alone no longer labels a user as non-Wesleyan.
+- Keychain storage, PKCE, nonce checks, and the server-side Wesleyan gate remain in place. No insecure storage fallback was introduced.
+- Signed Debug and Release builds passed. Live login after this correction still requires the user's Google/password/Duo interaction.

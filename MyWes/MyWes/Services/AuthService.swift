@@ -12,11 +12,27 @@ struct AuthService {
     let client: SupabaseClient
 
     func signInWithGoogle() async throws -> Session {
-        try await client.auth.signInWithOAuth(
+        try verifySecureStorage()
+        return try await client.auth.signInWithOAuth(
             provider: .google,
             redirectTo: AuthRedirect.callbackURL
         ) { session in
             session.prefersEphemeralWebBrowserSession = true
+        }
+    }
+
+    private func verifySecureStorage() throws {
+        let storage = KeychainLocalStorage()
+        let key = "mywes-storage-check-\(UUID().uuidString)"
+        let value = Data(UUID().uuidString.utf8)
+        defer { try? storage.remove(key: key) }
+        do {
+            try storage.store(key: key, value: value)
+            guard try storage.retrieve(key: key) == value else {
+                throw AuthSetupError.secureStorageUnavailable
+            }
+        } catch {
+            throw AuthSetupError.secureStorageUnavailable
         }
     }
 
@@ -70,6 +86,9 @@ enum AuthUserFacingError {
         if let configError = error as? SupabaseConfigError {
             return configError.localizedDescription
         }
+        if let setupError = error as? AuthSetupError {
+            return setupError.localizedDescription
+        }
 
         if let authError = error as? AuthError {
             switch authError {
@@ -77,12 +96,7 @@ enum AuthUserFacingError {
                 if looksLikeWorkspacePolicy(message) {
                     return message
                 }
-                if response.statusCode == 403 || response.statusCode == 400 {
-                    return wesleyanOnlyMessage
-                }
-                return message.isEmpty
-                    ? "Could not complete Google sign-in. Please try again."
-                    : message
+                return AuthFailureMessage.api(message: message, statusCode: response.statusCode)
             case .sessionMissing:
                 return "Your session expired. Please sign in again."
             case .pkceGrantCodeExchange(let message, let oauthError, let code):
