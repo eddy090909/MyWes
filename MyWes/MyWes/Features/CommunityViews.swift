@@ -1,4 +1,5 @@
 import SwiftUI
+import SafariServices
 
 struct CampusRetry: View {
     let message: String
@@ -44,10 +45,29 @@ struct DiningView: View {
 struct DiningVenueCard: View {
     let venue: DiningVenue
     let date: Date
+    @State private var showingMenu = false
+    private var menuURL: URL? {
+        let slug: String
+        switch venue.name {
+        case "Usdan Marketplace": slug = "the-marketplace-at-usdan"
+        case "Summerfields": slug = "summerfields"
+        case "Usdan Café": slug = "usdan-cafe"
+        default: return nil
+        }
+        return URL(string: "https://wesleyan.cafebonappetit.com/cafe/\(slug)/")
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(venue.name).font(.headline)
             Text(venue.location).font(Typography.bodySmall)
+            if menuURL != nil {
+                Button { showingMenu = true } label: {
+                    Label("View official menu", systemImage: "fork.knife")
+                        .font(.subheadline.bold())
+                }
+                Text("Bon Appétit’s published menu. Availability may change; check dietary needs with dining staff.")
+                    .font(Typography.caption).foregroundStyle(Theme.secondaryText)
+            }
             if let open = venue.scheduledOpen(at: date) {
                 Text(open ? "Scheduled open" : "Scheduled closed")
                     .font(.subheadline.bold()).foregroundStyle(open ? .green : Theme.secondaryText)
@@ -74,7 +94,18 @@ struct DiningVenueCard: View {
         .background(Theme.background)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
         .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).stroke(Theme.border))
+        .sheet(isPresented: $showingMenu) {
+            if let menuURL { OfficialDiningMenu(url: menuURL).ignoresSafeArea() }
+        }
     }
+}
+
+private struct OfficialDiningMenu: UIViewControllerRepresentable {
+    let url: URL
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }
 
 struct CampusQuestionRow: View {

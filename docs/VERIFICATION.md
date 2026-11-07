@@ -1,5 +1,9 @@
 # MyWes verification — November 7, 2026
 
+## Dining menu checkpoint
+
+Added in-app official Bon Appétit menu pages for Usdan Marketplace, Summerfields, and Usdan Café. URLs verified against Wesleyan’s official menu directory. Signed Debug simulator build passed. The new menu sheet has not yet been exercised in the simulator; native menu ingestion and reviews are not implemented.
+
 ## Live simulator results
 
 Tested the signed app on iPhone 17 / iOS 26.5 against the existing hosted Supabase project.

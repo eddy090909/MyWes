@@ -39,6 +39,8 @@ Build with local simulator signing (required for live Keychain/PKCE login checks
 xcodebuild -project MyWes/MyWes.xcodeproj -scheme MyWes -sdk iphonesimulator -configuration Debug -derivedDataPath /tmp/MyWesMVPDerivedData CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES build
 ```
 
+Dining includes an in-app browser for each location’s official Bon Appétit menu, linked from [Wesleyan’s menu directory](https://www.wesleyan.edu/dining/menus.html). Menu items come from the official website, not a native daily feed. Reviews are not implemented.
+
 Dining logic (actual production models):
 
 ```sh
