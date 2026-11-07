@@ -6,7 +6,7 @@
 import Foundation
 import Supabase
 
-struct ProfileRecord: Codable, Equatable, Sendable {
+nonisolated struct ProfileRecord: Codable, Equatable, Sendable {
     var id: UUID
     var email: String
     var fullName: String?
@@ -50,7 +50,7 @@ struct ProfileService {
     }
 }
 
-private struct ProfileOnboardingUpdate: Encodable {
+nonisolated private struct ProfileOnboardingUpdate: Encodable {
     var classYear: Int
     var interests: [String]
     var onboardingCompleted: Bool
