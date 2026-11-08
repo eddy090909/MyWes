@@ -4,28 +4,35 @@
 
 ### Your Wesleyan, all in one place.
 
-An iOS campus companion for discovering events, finding communities, checking dining, and getting answers from fellow students.
+An iOS campus companion for dining, events, Wesleyan resource hours, and advice from the Wes community.
 
 **SwiftUI · Supabase · PostgreSQL · Google OAuth**
 
-[Features](#features) · [Engineering](#engineering) · [Run locally](#run-locally) · [Verification](docs/VERIFICATION.md)
+[Product vision](#product-vision) · [Engineering](#engineering) · [Run locally](#run-locally) · [Verification](docs/VERIFICATION.md)
 
 </div>
 
 ---
 
-MyWes brings everyday campus tasks into one app. Students can find an upcoming event, save it for later, follow its host organization, check a dining location, or ask the campus community a question—all through a Wesleyan Google account.
+**MyWes** is an iOS campus app that brings dining menus, campus events, and working hours for all Wes resources into one place. Its community forum, **AskWes**, lets students ask questions about choosing a major, planning their future, and navigating life at Wesleyan while sharing advice and experiences.
 
-## Features
+## Product vision
 
-| | What students can do |
+MyWes is being built as one place to navigate Wesleyan—from deciding where to eat and finding something to do, to getting advice on decisions that shape life during and after college. The experiences below describe the intended product; see [current implementation](#current-implementation) for what is available today.
+
+| Experience | What MyWes is designed to offer |
 | --- | --- |
-| **Discover** | Browse campus events and organizations, open their details, and search the loaded catalog. |
-| **Save & follow** | Save events and follow organizations, with preferences persisted across app launches. Home surfaces upcoming events from followed organizations. |
-| **AskWes** | Post questions, answer other students, search question titles, and delete their own contributions. |
-| **Dining** | Check published hours for Usdan Marketplace, Summerfields, and Usdan Café, with Eastern Time schedule status and official menu pages available inside the app. |
-| **Profile & onboarding** | Set class year and interests, edit profile information, and access saved events and followed organizations. |
-| **Wesleyan sign-in** | Authenticate with Google through Supabase, with secure session storage and a server-side Wesleyan email restriction. |
+| **Dining** | Find campus dining locations, explore menus and food options, and check hours before heading out. Student reviews are a possible future addition. |
+| **Events & organizations** | Discover what is happening on campus, find communities around your interests, save events, and follow organizations you care about. |
+| **Wesleyan resources** | Find working hours for resources across Wes, so students can plan around when services are available. The goal is campus-wide coverage beyond dining. |
+| **AskWes** | Ask meaningful questions about majors, academic choices, future plans, and everyday campus life. Connect with upperclassmen and, as alumni access is developed, graduates who can share experience beyond Wesleyan. |
+| **Your campus, personalized** | Keep saved events, followed organizations, and interests together to make campus life easier to navigate. |
+
+## Current implementation
+
+The MVP includes Wesleyan Google sign-in, event and organization browsing, persistent event saves and organization follows, catalog search, student questions and answers with title search and author deletion, profile editing, and dining schedules for three locations. Official Bon Appétit menu pages are available inside the app.
+
+Campus-wide resource hours and alumni participation remain part of the product vision. Native menu listings and dining reviews are not implemented. Current sign-in is restricted to approved Wesleyan Google test accounts.
 
 ## Engineering
 
