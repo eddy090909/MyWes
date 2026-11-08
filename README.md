@@ -1,76 +1,61 @@
+<div align="center">
+
 # MyWes
 
-A SwiftUI campus app for Wesleyan students, backed by Supabase Auth and PostgreSQL. Discover events and organizations, save events, follow organizations, check dining schedules, and ask or answer campus questions.
+### Your Wesleyan, all in one place.
 
-## Status
+An iOS campus companion for discovering events, finding communities, checking dining, and getting answers from fellow students.
 
-Core MVP flows are verified in the iPhone 17 simulator against hosted Supabase: real Wesleyan Google login, session restore, event/org discovery, persistent saves/follows, search, published dining schedules, Profile save, and student questions/answers with author deletion. The live test found and corrected database field mappings, simulator signing/PKCE storage, error messages, and answer-confirmation behavior. See [verification and remaining limits](docs/VERIFICATION.md).
+**SwiftUI · Supabase · PostgreSQL · Google OAuth**
 
-This is not an App Store release. Physical-device and several negative-path checks remain pending. Google OAuth is currently in **Testing**, so students must be added as Google test users before signing in.
+[Features](#features) · [Engineering](#engineering) · [Run locally](#run-locally) · [Verification](docs/VERIFICATION.md)
 
-There is no guest login or production authentication bypass. Sample data is used in SwiftUI previews. Onboarding offers static year and interest choices.
+</div>
+
+---
+
+MyWes brings everyday campus tasks into one app. Students can find an upcoming event, save it for later, follow its host organization, check a dining location, or ask the campus community a question—all through a Wesleyan Google account.
+
+## Features
+
+| | What students can do |
+| --- | --- |
+| **Discover** | Browse campus events and organizations, open their details, and search the loaded catalog. |
+| **Save & follow** | Save events and follow organizations, with preferences persisted across app launches. Home surfaces upcoming events from followed organizations. |
+| **AskWes** | Post questions, answer other students, search question titles, and delete their own contributions. |
+| **Dining** | Check published hours for Usdan Marketplace, Summerfields, and Usdan Café, with Eastern Time schedule status and official menu pages available inside the app. |
+| **Profile & onboarding** | Set class year and interests, edit profile information, and access saved events and followed organizations. |
+| **Wesleyan sign-in** | Authenticate with Google through Supabase, with secure session storage and a server-side Wesleyan email restriction. |
+
+## Engineering
+
+Built in **Swift** and **SwiftUI**, with **Supabase Auth** and **PostgreSQL** supporting persistent campus and student data.
+
+- **Shared application state:** `AppSession` coordinates authentication, profile, catalog, and community services using Swift Observation and asynchronous data access.
+- **Responsive engagement:** saves and follows update optimistically, roll back on failure, and serialize changes per item to avoid conflicting writes.
+- **Database-enforced access:** PostgreSQL row-level security protects student-owned saves, follows, profiles, and Q&A writes. The database assigns Q&A authorship; students can delete only their own contributions.
+- **Secure authentication:** Google OAuth uses PKCE and Keychain-backed session storage. Provider secrets stay on the backend; the app uses a publishable/anon key.
+- **Time-aware dining:** schedule calculations handle Eastern Time, overnight service, and expiration dates so outdated schedules do not claim a location is open.
+
+## Project status
+
+**Working iOS MVP, available as source.** MyWes is not currently distributed through the App Store or TestFlight. Running it requires Xcode and a configured Supabase backend. The hosted Google OAuth app is in Testing, so access currently requires an approved Wesleyan test account.
+
+Real login, session restoration, event and organization browsing, persistent saves/follows, Q&A creation/search/deletion, profile saving, and dining schedules have been exercised against hosted Supabase in the iPhone simulator. Signed Debug and Release builds passed during MVP verification. Local checks cover database serialization, authentication errors, dining calculations, and 37 database permission/persistence assertions.
+
+Dining menus open the official Bon Appétit website inside the app; native menu ingestion and reviews are future work. The new menu sheet has passed a Debug build but still needs simulator interaction testing. Catalog content is maintained through the backend rather than an automatic campus feed. Physical-device testing and additional failure-path checks remain on the roadmap.
+
+See [verification notes](docs/VERIFICATION.md) for the scope and limits of completed checks.
 
 ## Run locally
 
-1. Install Xcode with an iOS 26.5 or newer simulator. Current verification uses Xcode 27.2. Open `MyWes/MyWes.xcodeproj` and select the MyWes scheme.
-2. Copy `MyWes/Config/Secrets.example.xcconfig` to `MyWes/Config/Secrets.xcconfig` (ignored by Git).
-3. Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` to your project's HTTPS URL and **publishable/anon** key. In xcconfig files write the URL as `https:/$()/PROJECT.supabase.co` so `//` is not parsed as a comment. Do not put a service-role key, `sb_secret_` key, Google client secret, or database password in the app.
-4. Apply `supabase/migrations` in filename order to your own Supabase project. For an existing project, inspect its migration history and apply only missing migrations. Never reset a hosted database to set up the app. `supabase/seed.sql` is sample catalog content, not a live event feed.
-5. In Supabase Authentication → Providers enable Google with the Google OAuth web client. Register the Supabase callback URL shown in that dashboard in Google Cloud. Keep the OAuth client secret on Supabase only.
-6. In Authentication → URL Configuration allow the exact redirect `mywes://auth-callback`.
-7. In Authentication → Hooks enable **Before User Created** with `public.hook_restrict_wesleyan_email`. The SQL function existing in the database does not enable the hosted hook automatically. Keep anonymous sign-in disabled and disable Email/password signup for this Google-only app.
-8. Run the app and sign in with an `@wesleyan.edu` Google account. Workspace administrator restrictions may require approval from Wesleyan; do not bypass them. Supabase persists the session in Keychain.
+1. Open `MyWes/MyWes.xcodeproj` in Xcode and select the **MyWes** scheme. The project currently targets **iOS 26.5**.
+2. Copy `MyWes/Config/Secrets.example.xcconfig` to `MyWes/Config/Secrets.xcconfig` and supply your Supabase URL and publishable/anon key.
+3. Apply the included database migrations to your own Supabase project, configure Google OAuth and the Wesleyan email hook, and allow the `mywes://auth-callback` redirect.
+4. Build and run on a compatible simulator, then sign in with an authorized `@wesleyan.edu` Google account.
 
-## Architecture and data
+The [development guide](docs/DEVELOPMENT.md) includes complete backend setup, secret handling, architecture details, and test commands.
 
-`AppSession` owns authentication, profile, engagement state, `CampusCatalog`, and `CommunityStore`. Views use the existing SwiftUI design system and async Supabase services. RLS controls access even when requests are made outside the app.
+## Author
 
-- Catalog: authenticated read-only events and organizations; maintain actual campus records through trusted backend tooling.
-- Engagement: each student can read/write only their own follows and event saves. Writes are optimistic, roll back on failure, and serialize per item.
-- Profile: students can read their own profile and update only editable profile columns. Auth identity is provisioned on the server.
-- AskWes: authenticated campus readership, database-assigned authorship, student-authored questions and answers, author-only deletion. No public profile or email lookup. List/detail requests show up to 100 records; title search queries the server and returns up to 100 matches. Voting, attachments, notifications, and moderation tooling are not implemented.
-- Dining: authenticated read-only schedules for Usdan Marketplace, Summerfields, and Usdan Café. Initial regular semester hours were checked against [Wesleyan's official hours](https://www.wesleyan.edu/dining/Hours%20of%20Operation.html) and [location information](https://www.wesleyan.edu/dining/placestoeat.html) on November 7, 2026. The app calculates **scheduled** open status in Eastern Time, including overnight service. This is not a real-time availability feed. Break exceptions must be checked on the official site. Schedules expire November 20, 2026; after expiry the app asks users to check official hours. A trusted maintainer must reverify schedules and advance validity dates. No fabricated ratings or occupancy.
-
-## Checks
-
-Build with local simulator signing (required for live Keychain/PKCE login checks):
-
-```sh
-xcodebuild -project MyWes/MyWes.xcodeproj -scheme MyWes -sdk iphonesimulator -configuration Debug -derivedDataPath /tmp/MyWesMVPDerivedData CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES build
-```
-
-Dining includes an in-app browser for each location’s official Bon Appétit menu, linked from [Wesleyan’s menu directory](https://www.wesleyan.edu/dining/menus.html). Menu items come from the official website, not a native daily feed. Reviews are not implemented.
-
-Dining logic (actual production models):
-
-```sh
-swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/CampusContent.swift Tests/DiningTests.swift -o /tmp/mywes-dining-tests
-/tmp/mywes-dining-tests
-```
-
-Database response/request formats (actual production wire models):
-
-```sh
-swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/DatabaseRecords.swift MyWes/MyWes/Models/CampusContent.swift Tests/DatabaseCodingTests.swift -o /tmp/mywes-coding-tests
-/tmp/mywes-coding-tests
-```
-
-Authentication error classification:
-
-```sh
-swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/AuthFailureMessage.swift Tests/AuthFailureTests.swift -o /tmp/mywes-auth-failure-tests
-/tmp/mywes-auth-failure-tests
-```
-
-Database migrations and permissions (isolated PostgreSQL via PGlite):
-
-```sh
-npm install --prefix Tests
-npm test --prefix Tests
-```
-
-These tests create synthetic Auth roles/users in a temporary database, apply all migrations, and exercise access as two different students and an anonymous user. They do not prove hosted OAuth, dashboard settings, or iPhone behavior. See the manual checks in `docs/VERIFICATION.md`.
-
-## Repository hygiene
-
-`Secrets.xcconfig`, Xcode user state, Supabase CLI local state, and `.local-assets/` are ignored. The local design handoff is preserved in `.local-assets/design_handoff_wesiq 2/`, outside the app target; it is not part of the repository or app bundle. No license grant has been selected yet. Visibility changes and pushes require the owner's approval.
+Built by [Edomias Zerihun](https://github.com/eddy090909).
