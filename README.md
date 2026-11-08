@@ -2,9 +2,9 @@
 
 # MyWes
 
-### Your Wesleyan, all in one place.
+### Your campus, all in one place.
 
-An iOS campus companion for dining, events, Wesleyan resource hours, and advice from the Wes community.
+Campus life, connected—from dining and events to resources and advice.
 
 **SwiftUI · Supabase · PostgreSQL · Google OAuth**
 
