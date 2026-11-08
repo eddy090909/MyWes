@@ -18,7 +18,7 @@ An iOS campus companion for dining, events, Wesleyan resource hours, and advice 
 
 ## Product vision
 
-MyWes is being built as one place to navigate Wesleyan—from deciding where to eat and finding something to do, to getting advice on decisions that shape life during and after college. The experiences below describe the intended product; see [current implementation](#current-implementation) for what is available today.
+MyWes is being built as one place to navigate Wesleyan—from deciding where to eat and finding something to do, to getting advice on decisions that shape life during and after college. The experiences below describe the intended product.
 
 | Experience | What MyWes is designed to offer |
 | --- | --- |
