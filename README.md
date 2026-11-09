@@ -6,9 +6,9 @@
 
 Campus life, connected—from dining and events to resources and advice.
 
-**SwiftUI · Supabase · PostgreSQL · Google OAuth**
+**Swift · SwiftUI · Supabase · PostgreSQL · Google OAuth**
 
-[Product vision](#product-vision) · [Engineering](#engineering) · [Run locally](#run-locally) · [Verification](docs/VERIFICATION.md)
+[Product vision](#product-vision) · [Engineering](#engineering) · [Project status](#project-status) · [Run locally](#run-locally)
 
 </div>
 
@@ -28,12 +28,6 @@ MyWes is being built as one place to navigate Wesleyan—from deciding where to 
 | **AskWes** | Ask meaningful questions about majors, academic choices, future plans, and everyday campus life. Connect with upperclassmen and, as alumni access is developed, graduates who can share experience beyond Wesleyan. |
 | **Your campus, personalized** | Keep saved events, followed organizations, and interests together to make campus life easier to navigate. |
 
-## Current implementation
-
-The MVP includes Wesleyan Google sign-in, event and organization browsing, persistent event saves and organization follows, catalog search, student questions and answers with title search and author deletion, profile editing, and dining schedules for three locations. Official Bon Appétit menu pages are available inside the app.
-
-Campus-wide resource hours and alumni participation remain part of the product vision. Native menu listings and dining reviews are not implemented. Current sign-in is restricted to approved Wesleyan Google test accounts.
-
 ## Engineering
 
 Built in **Swift** and **SwiftUI**, with **Supabase Auth** and **PostgreSQL** supporting persistent campus and student data.
@@ -46,13 +40,21 @@ Built in **Swift** and **SwiftUI**, with **Supabase Auth** and **PostgreSQL** su
 
 ## Project status
 
-**Working iOS MVP, available as source.** MyWes is not currently distributed through the App Store or TestFlight. Running it requires Xcode and a configured Supabase backend. The hosted Google OAuth app is in Testing, so access currently requires an approved Wesleyan test account.
+**Working iOS MVP · Source available · In active development**
 
-Real login, session restoration, event and organization browsing, persistent saves/follows, Q&A creation/search/deletion, profile saving, and dining schedules have been exercised against hosted Supabase in the iPhone simulator. Signed Debug and Release builds passed during MVP verification. Local checks cover database serialization, authentication errors, dining calculations, and 37 database permission/persistence assertions.
+The current app includes Google sign-in, event and organization discovery, persistent saves and follows, catalog search, AskWes questions and answers, profile editing, and dining schedules for Usdan Marketplace, Summerfields, and Usdan Café. Dining also provides access to official Bon Appétit menu pages inside the app.
 
-Dining menus open the official Bon Appétit website inside the app; native menu ingestion and reviews are future work. The new menu sheet has passed a Debug build but still needs simulator interaction testing. Catalog content is maintained through the backend rather than an automatic campus feed. Physical-device testing and additional failure-path checks remain on the roadmap.
+Campus-wide resource hours, alumni participation, native menu listings, and dining reviews are planned extensions of the product vision. Menus currently use the official website; the new menu sheet has passed a Debug build and awaits simulator interaction testing. Catalog records are maintained through the backend.
 
-See [verification notes](docs/VERIFICATION.md) for the scope and limits of completed checks.
+MyWes is available to build from source and is not yet distributed through the App Store or TestFlight. Hosted Google sign-in currently requires an approved Wesleyan test account while OAuth remains in Testing.
+
+### Validation
+
+- **Live backend checks:** Google login, session restoration, event and organization browsing, saves/follows across app restarts, Q&A posting/search/deletion, profile saving, and dining schedules exercised in the iOS simulator against hosted Supabase.
+- **Builds:** signed Debug and Release simulator builds passed during core MVP verification.
+- **Regression coverage:** production data serialization, authentication errors, and dining time calculations, plus **37 database permission and persistence assertions** in isolated PostgreSQL.
+
+Physical-device testing and additional failure-path checks remain. Full results and test boundaries are recorded in the [verification notes](docs/VERIFICATION.md); commands are in the [development guide](docs/DEVELOPMENT.md).
 
 ## Run locally
 
