@@ -18,9 +18,9 @@ Campus life, connected—from dining and events to resources and advice.
 
 ## Screenshots
 
-<p align="center">
-  <img src="docs/screenshots/home.jpg" alt="MyWes Home screen" width="300" />
-</p>
+| | | |
+| :---: | :---: | :---: |
+| ![MyWes Home](docs/screenshots/home.png) | ![MyWes Dining](docs/screenshots/dining.png) | ![MyWes Event](docs/screenshots/event.png) |
 
 ## Product vision
 
