@@ -8,13 +8,19 @@ Campus life, connected—from dining and events to resources and advice.
 
 **Swift · SwiftUI · Supabase · PostgreSQL · Google OAuth**
 
-[Product vision](#product-vision) · [Engineering](#engineering) · [Project status](#project-status) · [Run locally](#run-locally)
+[Screenshots](#screenshots) · [Product vision](#product-vision) · [Engineering](#engineering) · [Project status](#project-status) · [Run locally](#run-locally)
 
 </div>
 
 ---
 
 **MyWes** is an iOS campus app that brings dining menus, campus events, and working hours for all Wes resources into one place. Its community forum, **AskWes**, lets students ask questions about choosing a major, planning their future, and navigating life at Wesleyan while sharing advice and experiences.
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/home.jpg" alt="MyWes Home screen" width="300" />
+</p>
 
 ## Product vision
 
