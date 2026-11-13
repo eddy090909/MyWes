@@ -31,7 +31,16 @@ Build with local simulator signing (required for live Keychain/PKCE login checks
 xcodebuild -project MyWes/MyWes.xcodeproj -scheme MyWes -sdk iphonesimulator -configuration Debug -derivedDataPath /tmp/MyWesMVPDerivedData CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES build
 ```
 
-Dining includes an in-app browser for each location’s official Bon Appétit menu, linked from [Wesleyan’s menu directory](https://www.wesleyan.edu/dining/menus.html). Menu items come from the official website, not a native daily feed. Reviews are not implemented.
+Dining shows native daily menus. The app downloads each location's public Bon Appétit page (`https://wesleyan.cafebonappetit.com/cafe/<menu_slug>/<YYYY-MM-DD>/`) and parses the `Bamco.menu_items` and `Bamco.dayparts` data embedded in it (`Models/DiningMenu.swift`, `Services/DiningMenuService.swift`). Menus are cached for 30 minutes per location and day. The official page stays one tap away as a fallback. Reviews are not implemented.
+
+Hours live in `dining_locations`. `weekly_hours` holds the regular week; `special_hours` maps campus dates (`"2026-11-26": []`) to replacement hours for breaks and holidays. Each semester, update both and move `valid_through` forward in a new migration. Once `valid_through` passes, the app stops claiming a location is open.
+
+Menu parser (synthetic page; pass saved Bon Appétit HTML files to also check real pages):
+
+```sh
+swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/CampusContent.swift MyWes/MyWes/Models/DiningMenu.swift Tests/DiningMenuTests.swift -o /tmp/mywes-menu-tests
+/tmp/mywes-menu-tests
+```
 
 Dining logic (actual production models):
 

@@ -30,6 +30,7 @@ struct MainTabView: View {
 
             NavigationStack {
                 DiningView()
+                    .appDestinations()
             }
             .tabItem {
                 Label("Dining", systemImage: "fork.knife")

@@ -6,6 +6,9 @@ import Supabase
 final class CommunityStore {
     private(set) var questions: [CampusQuestion] = []
     private(set) var dining: [DiningVenue] = []
+    var sortedDining: [DiningVenue] {
+        dining.sorted { ($0.sortOrder, $0.name) < ($1.sortOrder, $1.name) }
+    }
     private(set) var isLoading = false
     private(set) var questionError: String?
     private(set) var diningError: String?

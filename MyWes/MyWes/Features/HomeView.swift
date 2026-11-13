@@ -164,8 +164,13 @@ struct HomeView: View {
                     .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
             }
             TimelineView(.periodic(from: .now, by: 60)) { context in
-                ForEach(session.community.dining.prefix(2)) { venue in
-                    DiningVenueCard(venue: venue, date: context.date)
+                let venues = session.community.sortedDining
+                let openFirst = venues.filter { $0.scheduledOpen(at: context.date) == true }
+                    + venues.filter { $0.scheduledOpen(at: context.date) != true }
+                VStack(spacing: 10) {
+                    ForEach(openFirst.prefix(3)) { venue in
+                        DiningVenueCard(venue: venue, date: context.date, compact: true)
+                    }
                 }
             }
         }.padding(.horizontal, Theme.screenPadding)

@@ -37,7 +37,12 @@ for (const table of ['profiles','organizations','events','org_follows','event_sa
 await as(a);
 equal((await query('select id from profiles')).rows, [{id:a}]);
 equal((await query('select id from organizations')).rows.length, 1);
-equal((await query('select * from dining_locations')).rows.length, 3);
+equal((await query('select * from dining_locations')).rows.length, 8);
+equal((await query("select name from dining_locations where menu_slug is not null order by sort_order")).rows.map(r => r.name),
+  ['Usdan Marketplace','Summerfields','Usdan Café','Pi² Café','Cardinal Café','Daniel Family Commons']);
+equal((await query("select special_hours->'2026-11-26' as d from dining_locations where name='Usdan Marketplace'")).rows[0].d, []);
+equal((await query("select count(*)::int as n from dining_locations where jsonb_array_length(weekly_hours) <> 7 or valid_through < '2026-12-01'")).rows[0].n, 0);
+await denied("update dining_locations set menu_slug='x' where name='Summerfields'");
 await query("update profiles set full_name='Student A',class_year=2028 where id=$1",[a]);
 equal((await query('select full_name from profiles')).rows[0].full_name, 'Student A');
 equal((await query("update profiles set full_name='Intruder' where id=$1 returning id",[b])).rows.length, 0);

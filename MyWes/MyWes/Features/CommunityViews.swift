@@ -1,5 +1,4 @@
 import SwiftUI
-import SafariServices
 
 struct CampusRetry: View {
     let message: String
@@ -11,101 +10,6 @@ struct CampusRetry: View {
         }
         .frame(maxWidth: .infinity).padding()
     }
-}
-
-struct DiningView: View {
-    @Environment(AppSession.self) private var session
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Campus dining").font(Typography.headlineLarge)
-                Text("Regular semester hours in Eastern Time. Breaks and special events may differ.")
-                    .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
-                if let error = session.community.diningError {
-                    CampusRetry(message: error) { await session.community.refresh() }
-                }
-                if session.community.isLoading { ProgressView() }
-                if session.community.dining.isEmpty && !session.community.isLoading && session.community.diningError == nil {
-                    Text("No dining schedules have been published yet.")
-                }
-                TimelineView(.periodic(from: .now, by: 60)) { context in
-                    ForEach(session.community.dining) { venue in
-                        DiningVenueCard(venue: venue, date: context.date)
-                    }
-                }
-            }.padding(Theme.screenPadding)
-        }
-        .background(Theme.background.ignoresSafeArea())
-        .navigationTitle("Dining").navigationBarTitleDisplayMode(.inline)
-        .task { await session.community.refresh() }
-        .refreshable { await session.community.refresh() }
-    }
-}
-
-struct DiningVenueCard: View {
-    let venue: DiningVenue
-    let date: Date
-    @State private var showingMenu = false
-    private var menuURL: URL? {
-        let slug: String
-        switch venue.name {
-        case "Usdan Marketplace": slug = "the-marketplace-at-usdan"
-        case "Summerfields": slug = "summerfields"
-        case "Usdan Café": slug = "usdan-cafe"
-        default: return nil
-        }
-        return URL(string: "https://wesleyan.cafebonappetit.com/cafe/\(slug)/")
-    }
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(venue.name).font(.headline)
-            Text(venue.location).font(Typography.bodySmall)
-            if menuURL != nil {
-                Button { showingMenu = true } label: {
-                    Label("View official menu", systemImage: "fork.knife")
-                        .font(.subheadline.bold())
-                }
-                Text("Bon Appétit’s published menu. Availability may change; check dietary needs with dining staff.")
-                    .font(Typography.caption).foregroundStyle(Theme.secondaryText)
-            }
-            if let open = venue.scheduledOpen(at: date) {
-                Text(open ? "Scheduled open" : "Scheduled closed")
-                    .font(.subheadline.bold()).foregroundStyle(open ? .green : Theme.secondaryText)
-                Text("Today: \(venue.hours(on: date))").font(Typography.bodySmall)
-            } else {
-                Text("Schedule needs updating. Check official hours.").foregroundStyle(Theme.secondaryText)
-            }
-            DisclosureGroup("Weekly hours") {
-                ForEach(0..<min(7, venue.weeklyHours.count), id: \.self) { day in
-                    HStack(alignment: .top) {
-                        Text(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day]).frame(width: 36, alignment: .leading)
-                        Text(venue.weeklyHours[day].isEmpty ? "Regularly closed" : venue.weeklyHours[day].map(\.label).joined(separator: " · "))
-                    }.font(Typography.caption).padding(.vertical, 2)
-                }
-            }
-            Text(venue.notes).font(Typography.caption).foregroundStyle(Theme.secondaryText)
-            Text("Verified \(venue.verifiedOn) · valid through \(venue.validThrough)")
-                .font(Typography.caption).foregroundStyle(Theme.secondaryText)
-            if let url = URL(string: venue.sourceUrl), url.scheme == "https", url.host == "www.wesleyan.edu" {
-                Link("Official hours and exceptions", destination: url).font(Typography.bodySmall)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading).padding(16)
-        .background(Theme.background)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
-        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).stroke(Theme.border))
-        .sheet(isPresented: $showingMenu) {
-            if let menuURL { OfficialDiningMenu(url: menuURL).ignoresSafeArea() }
-        }
-    }
-}
-
-private struct OfficialDiningMenu: UIViewControllerRepresentable {
-    let url: URL
-    func makeUIViewController(context: Context) -> SFSafariViewController {
-        SFSafariViewController(url: url)
-    }
-    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }
 
 struct CampusQuestionRow: View {
