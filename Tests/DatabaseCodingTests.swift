@@ -1,5 +1,9 @@
 import Foundation
+#if canImport(Darwin)
 import Darwin
+#else
+import Glibc
+#endif
 
 @main struct DatabaseCodingTests {
     static func main() throws {
@@ -32,6 +36,12 @@ import Darwin
             {"id":"\(id)","org_id":"\(id)","title":"Test","category":"Social","description":"Details","location":"Campus","start_at":"2026-11-07T18:00:00Z","end_at":null}
             """)
             try require(row.orgId.uuidString.lowercased() == id)
+        }
+        check("calendar event response") {
+            let row = try decode(EventRecord.self, """
+            {"id":"\(id)","org_id":"\(id)","title":"Hockey","category":"Athletics","description":"","location":"Rink","start_at":"2026-11-15T00:00:00Z","end_at":null,"is_all_day":true,"source_url":"https://events.wesleyan.edu/event/1","external_source":"wesleyan_calendar","external_id":"1","banner_url":null,"created_at":"2026-11-13T00:00:00Z"}
+            """)
+            try require(row.isAllDay && row.sourceUrl == "https://events.wesleyan.edu/event/1")
         }
         check("organization response") {
             let row = try decode(OrganizationRecord.self, """

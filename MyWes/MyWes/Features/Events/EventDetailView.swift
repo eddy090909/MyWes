@@ -66,6 +66,15 @@ struct EventDetailView: View {
                                 .font(.system(size: 14))
                                 .foregroundStyle(Theme.ink.opacity(0.85))
                                 .lineSpacing(4)
+
+                            if let url = event.sourceURL {
+                                Link(destination: url) {
+                                    Label("Details on the Wesleyan calendar", systemImage: "arrow.up.right.square")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(Theme.cardinal)
+                                }
+                                .padding(.top, 16)
+                            }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 18)

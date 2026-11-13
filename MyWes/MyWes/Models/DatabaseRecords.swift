@@ -54,6 +54,8 @@ nonisolated struct EventRecord: Codable, Equatable, Sendable {
         case location
         case startAt = "start_at"
         case endAt = "end_at"
+        case isAllDay = "is_all_day"
+        case sourceUrl = "source_url"
     }
 
     var id: UUID
@@ -64,6 +66,37 @@ nonisolated struct EventRecord: Codable, Equatable, Sendable {
     var location: String
     var startAt: Date
     var endAt: Date?
+    var isAllDay: Bool = false
+    var sourceUrl: String? = nil
+
+    init(id: UUID, orgId: UUID, title: String, category: String, description: String, location: String,
+         startAt: Date, endAt: Date?, isAllDay: Bool = false, sourceUrl: String? = nil) {
+        self.id = id
+        self.orgId = orgId
+        self.title = title
+        self.category = category
+        self.description = description
+        self.location = location
+        self.startAt = startAt
+        self.endAt = endAt
+        self.isAllDay = isAllDay
+        self.sourceUrl = sourceUrl
+    }
+
+    // Calendar columns are optional so rows from before that migration decode.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        orgId = try c.decode(UUID.self, forKey: .orgId)
+        title = try c.decode(String.self, forKey: .title)
+        category = try c.decode(String.self, forKey: .category)
+        description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
+        location = try c.decode(String.self, forKey: .location)
+        startAt = try c.decode(Date.self, forKey: .startAt)
+        endAt = try c.decodeIfPresent(Date.self, forKey: .endAt)
+        isAllDay = try c.decodeIfPresent(Bool.self, forKey: .isAllDay) ?? false
+        sourceUrl = try c.decodeIfPresent(String.self, forKey: .sourceUrl)
+    }
 }
 
 nonisolated struct OrganizationRecord: Codable, Equatable, Sendable {

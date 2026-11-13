@@ -46,13 +46,18 @@ struct Event: Identifiable, Equatable {
     var description: String
     var startAt: Date
     var endAt: Date?
+    var isAllDay = false
+    /// Official page on events.wesleyan.edu for calendar-synced events.
+    var sourceURL: URL? = nil
 
     var dateLabel: String {
         CampusTime.dateLabel.string(from: startAt)
     }
 
     var time: String {
-        CampusTime.time.string(from: startAt)
+        if isAllDay { return "All day" }
+        guard let endAt, endAt > startAt else { return CampusTime.time.string(from: startAt) }
+        return "\(CampusTime.time.string(from: startAt)) – \(CampusTime.time.string(from: endAt))"
     }
 
     var monthLabel: String {

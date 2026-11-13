@@ -12,7 +12,9 @@ struct EventService {
     func fetchEvents() async throws -> [Event] {
         let rows: [EventRecord] = try await client
             .from("events")
-            .select("id,org_id,title,category,description,location,start_at,end_at")
+            // "*" (not a column list) so this works before and after the
+            // campus calendar migration adds is_all_day/source_url.
+            .select()
             .order("start_at")
             .execute()
             .value
@@ -26,7 +28,11 @@ struct EventService {
                 orgID: row.orgId,
                 description: row.description,
                 startAt: row.startAt,
-                endAt: row.endAt
+                endAt: row.endAt,
+                isAllDay: row.isAllDay,
+                sourceURL: row.sourceUrl.flatMap(URL.init(string:)).flatMap {
+                    $0.scheme == "https" && $0.host == "events.wesleyan.edu" ? $0 : nil
+                }
             )
         }
     }

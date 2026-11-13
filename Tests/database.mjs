@@ -9,12 +9,12 @@ const denied = async (sql, args) => {
   await assert.rejects(query(sql, args), e => ['42501','23514','23503'].includes(e.code)); checks++;
 };
 await db.exec(`
-create role anon; create role authenticated; create role supabase_auth_admin;
+create role anon; create role authenticated; create role supabase_auth_admin; create role service_role;
 create schema auth;
 create table auth.users(id uuid primary key, email text);
 create function auth.uid() returns uuid language sql stable as
 $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-grant usage on schema auth, public to anon, authenticated;
+grant usage on schema auth, public to anon, authenticated, service_role;
 grant execute on function auth.uid() to anon, authenticated;
 `);
 const migrationDir = new URL('../supabase/migrations/', import.meta.url);
@@ -77,6 +77,27 @@ equal((await query('delete from questions where id=$1 returning id',[q.id])).row
 equal((await query('select * from answers where question_id=$1',[q.id])).rows.length,0);
 equal((await query('delete from event_saves where user_id=$1 returning *',[a])).rows.length,1);
 equal((await query('delete from org_follows where user_id=$1 returning *',[a])).rows.length,1);
+// Calendar sync: only the service role may run it; it upserts, is idempotent,
+// removes events that left the feed, and never touches hand-entered rows.
+const day = n => new Date(Date.now() + n * 86400000).toISOString();
+const calendar = (events) => JSON.stringify({ window_start: day(-1), window_end: day(55),
+  organizations: [{ external_id: '5', name: 'Athletics', category: 'Athletics', description: 'Calendar host' }],
+  events: events.map(([id, title, offset]) => ({ external_id: id, org_external_id: '5', title, category: 'Athletics',
+    description: '', location: 'Rink', start_at: day(offset), end_at: null, is_all_day: false,
+    source_url: 'https://events.wesleyan.edu/event/' + id })) });
+await as(a);
+await denied('select sync_campus_events($1::jsonb)', [calendar([])]);
+await db.exec('reset role; set role service_role');
+const sync = async events => (await query('select sync_campus_events($1::jsonb) r', [calendar(events)])).rows[0].r;
+equal(await sync([['1', 'Hockey', 2], ['2', 'Swim meet', 3]]), { organizations: 1, events: 2, removed: 0 });
+equal(await sync([['1', 'Hockey vs. Trinity', 2], ['2', 'Swim meet', 3]]), { organizations: 1, events: 2, removed: 0 });
+equal(await sync([['1', 'Hockey vs. Trinity', 2]]), { organizations: 1, events: 1, removed: 1 });
+await assert.rejects(query("select sync_campus_events('{\"events\":[]}'::jsonb)"), e => e.code === '22023'); checks++;
+await as(a);
+equal((await query("select title, source_url from events where external_source = 'wesleyan_calendar'")).rows,
+  [{ title: 'Hockey vs. Trinity', source_url: 'https://events.wesleyan.edu/event/1' }]);
+equal((await query("select count(*)::int n from events where external_source is null")).rows[0].n, 1);
+equal((await query("select count(*)::int n from organizations where external_source = 'wesleyan_calendar'")).rows[0].n, 1);
 await db.exec('reset role; set role supabase_auth_admin');
 equal((await query(`select hook_restrict_wesleyan_email('{"user":{"email":"a@wesleyan.edu"}}') result`)).rows[0].result,{});
 equal((await query(`select hook_restrict_wesleyan_email('{"user":{"email":"a@gmail.com"}}') result`)).rows[0].result.error.http_code,403);

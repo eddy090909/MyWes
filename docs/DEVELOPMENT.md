@@ -72,6 +72,36 @@ npm test --prefix Tests
 
 These tests create synthetic Auth roles/users in a temporary database, apply all migrations, and exercise access as two different students and an anonymous user. They do not prove hosted OAuth, dashboard settings, or iPhone behavior. See the manual checks in [verification notes](VERIFICATION.md).
 
+## Campus events sync
+
+Events and hosts come from the public Wesleyan calendar (`events.wesleyan.edu`, LiveWhale JSON). The `sync-campus-events` Edge Function fetches the next 8 weeks and calls `public.sync_campus_events(payload)`, which only the service role can run. The function upserts hosts and events, removes events that left the feed, and deletes synced events that ended more than 14 days ago. Rows entered by hand (`external_source` null) are never changed.
+
+One-time setup against the hosted project:
+
+```sh
+supabase db push
+supabase secrets set CALENDAR_SYNC_SECRET="$(openssl rand -hex 32)"
+supabase functions deploy sync-campus-events --no-verify-jwt
+curl -X POST "https://<project-ref>.supabase.co/functions/v1/sync-campus-events" -H "x-sync-secret: <secret>"
+```
+
+The first sync should report about 200+ events. For hourly runs, enable the `pg_cron` and `pg_net` extensions (Dashboard → Database → Extensions), then run this in the SQL editor:
+
+```sql
+select cron.schedule('sync-campus-events', '17 * * * *', $$
+  select net.http_post(
+    url := 'https://<project-ref>.supabase.co/functions/v1/sync-campus-events',
+    headers := jsonb_build_object('x-sync-secret', '<secret>'),
+    timeout_milliseconds := 60000)
+$$);
+```
+
+Transform checks (Node 22.18+ runs the TypeScript module directly):
+
+```sh
+node Tests/calendar.test.mjs
+```
+
 ## Repository hygiene
 
 `Secrets.xcconfig`, Xcode user state, Supabase CLI local state, and `.local-assets/` are ignored. The local design handoff is preserved in `.local-assets/design_handoff_wesiq 2/`, outside the app target; it is not part of the repository or app bundle. No license grant has been selected yet. Visibility changes and pushes require the owner's approval.

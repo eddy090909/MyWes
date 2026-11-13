@@ -54,14 +54,14 @@ final class CampusCatalog {
 
     var eventFilterCategories: [String] {
         filterCategories(
-            preferred: ["All", "Social", "Academic", "Dining", "Community"],
+            preferred: ["All", "Social", "Academic", "Arts", "Athletics", "Dining", "Community"],
             values: events.map(\.category)
         )
     }
 
     var organizationFilterCategories: [String] {
         filterCategories(
-            preferred: ["All", "Governance", "Media", "Academic", "Community", "Social", "Campus Services"],
+            preferred: ["All", "Governance", "Media", "Academic", "Arts", "Athletics", "Community", "Social", "Campus Services"],
             values: organizations.map(\.category)
         )
     }
