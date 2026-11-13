@@ -37,7 +37,10 @@ for (const table of ['profiles','organizations','events','org_follows','event_sa
 await as(a);
 equal((await query('select id from profiles')).rows, [{id:a}]);
 equal((await query('select id from organizations')).rows.length, 1);
-equal((await query('select * from dining_locations')).rows.length, 8);
+equal((await query('select * from dining_locations')).rows.length, 13);
+equal((await query("select name, specials_source, hours_published from dining_locations where operator='independent' order by sort_order")).rows.map(r => [r.name, r.specials_source, r.hours_published]),
+  [['WesWings','weswings',true], ['Red & Black Café','red_black_cafe',true], ["Cohen's Bagels",null,true], ['Star & Crescent',null,false], ['Espwesso',null,false]]);
+equal((await query("select count(*)::int n from dining_locations where operator='independent' and menu_slug is not null")).rows[0].n, 0);
 equal((await query("select name from dining_locations where menu_slug is not null order by sort_order")).rows.map(r => r.name),
   ['Usdan Marketplace','Summerfields','Usdan Café','Pi² Café','Cardinal Café','Daniel Family Commons']);
 equal((await query("select special_hours->'2026-11-26' as d from dining_locations where name='Usdan Marketplace'")).rows[0].d, []);

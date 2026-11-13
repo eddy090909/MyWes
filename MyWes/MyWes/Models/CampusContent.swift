@@ -57,6 +57,10 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
         case sourceUrl = "source_url"
         case menuSlug = "menu_slug"
         case sortOrder = "sort_order"
+        case operatorKind = "operator"
+        case menuUrl = "menu_url"
+        case specialsSource = "specials_source"
+        case hoursPublished = "hours_published"
         case verifiedOn = "verified_on"
         case validThrough = "valid_through"
     }
@@ -75,10 +79,20 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
     /// Bon Appétit cafe slug, e.g. "summerfields". Nil when no menu is published.
     var menuSlug: String?
     var sortOrder: Int = 100
+    /// "bon_appetit" or "independent" (prices and hours set by the restaurant).
+    var operatorKind: String = "bon_appetit"
+    /// Official menu page for locations without a Bon Appétit feed.
+    var menuUrl: String?
+    /// "weswings" or "red_black_cafe": daily specials posted on weswings.com.
+    var specialsSource: String?
+    /// False when the location publishes no hours we can verify.
+    var hoursPublished: Bool = true
 
     init(id: UUID, name: String, location: String, weeklyHours: [[DiningPeriod]], notes: String,
          sourceUrl: String, verifiedOn: String, validThrough: String,
-         specialHours: [String: [DiningPeriod]] = [:], menuSlug: String? = nil, sortOrder: Int = 100) {
+         specialHours: [String: [DiningPeriod]] = [:], menuSlug: String? = nil, sortOrder: Int = 100,
+         operatorKind: String = "bon_appetit", menuUrl: String? = nil, specialsSource: String? = nil,
+         hoursPublished: Bool = true) {
         self.id = id
         self.name = name
         self.location = location
@@ -90,6 +104,10 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
         self.specialHours = specialHours
         self.menuSlug = menuSlug ?? Self.legacyMenuSlug(for: name)
         self.sortOrder = sortOrder
+        self.operatorKind = operatorKind
+        self.menuUrl = menuUrl
+        self.specialsSource = specialsSource
+        self.hoursPublished = hoursPublished
     }
 
     // Newer columns are optional so the app still decodes rows from a
@@ -107,7 +125,11 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
             validThrough: try c.decode(String.self, forKey: .validThrough),
             specialHours: try c.decodeIfPresent([String: [DiningPeriod]].self, forKey: .specialHours) ?? [:],
             menuSlug: try c.decodeIfPresent(String.self, forKey: .menuSlug),
-            sortOrder: try c.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 100
+            sortOrder: try c.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 100,
+            operatorKind: try c.decodeIfPresent(String.self, forKey: .operatorKind) ?? "bon_appetit",
+            menuUrl: try c.decodeIfPresent(String.self, forKey: .menuUrl),
+            specialsSource: try c.decodeIfPresent(String.self, forKey: .specialsSource),
+            hoursPublished: try c.decodeIfPresent(Bool.self, forKey: .hoursPublished) ?? true
         )
     }
 
@@ -127,6 +149,19 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
         return menuSlug
     }
 
+    var isIndependent: Bool { operatorKind == "independent" }
+
+    /// Official menu link, HTTPS only.
+    var officialMenuURL: URL? {
+        guard let menuUrl, let url = URL(string: menuUrl), url.scheme == "https", url.host != nil else { return nil }
+        return url
+    }
+
+    var specialsFeed: WesWingsSpecials.Source? { specialsSource.flatMap(WesWingsSpecials.Source.init(rawValue:)) }
+
+    /// Whether MyWes can show menu content itself (a full menu or posted specials).
+    var hasInAppMenu: Bool { menuURLSlug != nil || specialsFeed != nil }
+
     static var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/New_York")!
@@ -140,7 +175,7 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
 
     func hasCurrentSchedule(at date: Date) -> Bool {
         let key = Self.dateKey(date)
-        return weeklyHours.count == 7 && key >= verifiedOn && key <= validThrough
+        return hoursPublished && weeklyHours.count == 7 && key >= verifiedOn && key <= validThrough
     }
 
     /// Service periods that open on this campus day, honoring special hours.
@@ -155,6 +190,7 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
     }
 
     func hours(on date: Date) -> String {
+        guard hoursPublished else { return "Hours not published" }
         guard let periods = periods(on: date) else { return "Hours unavailable" }
         if periods.isEmpty { return hasSpecialHours(on: date) ? "Closed today" : "Regularly closed" }
         return periods.map(\.label).joined(separator: " · ")

@@ -16,7 +16,7 @@ struct DiningView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Campus dining").font(Typography.headlineLarge)
-                Text("Hours are Eastern Time from Wesleyan Dining. Menus come from Bon Appétit and can change.")
+                Text("Hours are Eastern Time. Bon Appétit menus come from Bon Appétit; independent spots set their own menus, prices, and hours.")
                     .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
                 if let error = session.community.diningError {
                     CampusRetry(message: error) { await session.community.refresh() }
@@ -39,8 +39,21 @@ struct DiningView: View {
                             Text("Nothing is scheduled to be open right now.")
                                 .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
                         }
-                        ForEach(visible) { venue in
+                        let bonAppetit = visible.filter { !$0.isIndependent }
+                        let independent = visible.filter(\.isIndependent)
+                        ForEach(bonAppetit) { venue in
                             DiningVenueCard(venue: venue, date: context.date)
+                        }
+                        if !independent.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Independent spots").font(Typography.sectionTitle).foregroundStyle(Theme.ink)
+                                Text("Not run by Bon Appétit. They set their own prices, so meal plan points can go faster here.")
+                                    .font(Typography.caption).foregroundStyle(Theme.secondaryText)
+                            }
+                            .padding(.top, 8)
+                            ForEach(independent) { venue in
+                                DiningVenueCard(venue: venue, date: context.date)
+                            }
                         }
                     }
                 }
@@ -60,6 +73,7 @@ struct DiningVenueCard: View {
     let date: Date
     /// Compact cards (Home) skip weekly hours and notes.
     var compact = false
+    @State private var showingOfficialMenu = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -68,9 +82,22 @@ struct DiningVenueCard: View {
                 Spacer()
                 statusPill
             }
-            Text(venue.location).font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
+            HStack(spacing: 6) {
+                if venue.isIndependent {
+                    Text("Independent")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Theme.blueAccent)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Theme.blueAccent.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+                Text(venue.location).font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
+            }
 
-            if venue.scheduledOpen(at: date) != nil {
+            if !venue.hoursPublished {
+                Text("Hours aren’t published online. Check before you go.")
+                    .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
+            } else if venue.scheduledOpen(at: date) != nil {
                 HStack(spacing: 6) {
                     Text("Today: \(venue.hours(on: date))").font(Typography.bodySmall)
                     if venue.hasSpecialHours(on: date) {
@@ -87,31 +114,31 @@ struct DiningVenueCard: View {
                     .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
             }
 
-            if venue.menuURLSlug != nil {
-                NavigationLink(value: AppRoute.diningMenu(venue.id)) {
-                    Label("See today’s menu", systemImage: "fork.knife")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(Theme.cardinal)
-                }
-            }
+            menuAccess
 
             if !compact {
-                DisclosureGroup("Hours this week") {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(0..<7, id: \.self) { offset in
-                            weekRow(offset: offset)
-                        }
-                    }.padding(.top, 4)
+                if venue.hoursPublished {
+                    DisclosureGroup("Hours this week") {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(0..<7, id: \.self) { offset in
+                                weekRow(offset: offset)
+                            }
+                        }.padding(.top, 4)
+                    }
+                    .font(Typography.bodySmall)
+                    .tint(Theme.ink)
                 }
-                .font(Typography.bodySmall)
-                .tint(Theme.ink)
                 if !venue.notes.isEmpty {
                     Text(venue.notes).font(Typography.caption).foregroundStyle(Theme.secondaryText)
                 }
-                Text("Verified \(venue.verifiedOn) · valid through \(venue.validThrough)")
-                    .font(Typography.caption).foregroundStyle(Theme.secondaryText)
-                if let url = URL(string: venue.sourceUrl), url.scheme == "https", url.host == "www.wesleyan.edu" {
-                    Link("Official hours and exceptions", destination: url).font(Typography.bodySmall)
+                if venue.hoursPublished {
+                    Text("Verified \(venue.verifiedOn) · valid through \(venue.validThrough)")
+                        .font(Typography.caption).foregroundStyle(Theme.secondaryText)
+                }
+                if let url = URL(string: venue.sourceUrl), url.scheme == "https",
+                   url.host == "www.wesleyan.edu" || url.host == "weswings.com" {
+                    Link(venue.isIndependent ? "Official info" : "Official hours and exceptions", destination: url)
+                        .font(Typography.bodySmall)
                 }
             }
         }
@@ -119,6 +146,37 @@ struct DiningVenueCard: View {
         .background(Theme.background)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
         .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).stroke(Theme.border))
+        .sheet(isPresented: $showingOfficialMenu) {
+            if let url = venue.officialMenuURL { OfficialDiningMenu(url: url).ignoresSafeArea() }
+        }
+    }
+
+    /// Full menu, posted specials, or — when MyWes has no menu data — a clear
+    /// notice plus the official menu link when one exists.
+    @ViewBuilder private var menuAccess: some View {
+        if venue.menuURLSlug != nil {
+            NavigationLink(value: AppRoute.diningMenu(venue.id)) {
+                Label("See today’s menu", systemImage: "fork.knife")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(Theme.cardinal)
+            }
+        } else if venue.specialsFeed != nil {
+            NavigationLink(value: AppRoute.diningMenu(venue.id)) {
+                Label("See posted specials", systemImage: "photo.on.rectangle")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(Theme.cardinal)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Menu data isn’t available in MyWes", systemImage: "info.circle")
+                    .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
+                if venue.officialMenuURL != nil {
+                    Button("View official menu page") { showingOfficialMenu = true }
+                        .font(.subheadline.bold())
+                        .foregroundStyle(Theme.cardinal)
+                }
+            }
+        }
     }
 
     @ViewBuilder private var statusPill: some View {
@@ -155,6 +213,7 @@ enum DiningDateFormat {
     static let chipDay: DateFormatter = make("EEE")
     static let chipDate: DateFormatter = make("MMM d")
     static let long: DateFormatter = make("EEEE, MMMM d")
+    static let posted: DateFormatter = make("EEE, MMM d 'at' h:mm a")
 
     private static func make(_ format: String) -> DateFormatter {
         let f = DateFormatter()
@@ -425,6 +484,142 @@ struct DiningMenuView: View {
             self.error = (error as? URLError)?.code == .notConnectedToInternet
                 ? "You’re offline. Connect to load the menu."
                 : "Couldn’t load the menu right now."
+        }
+    }
+}
+
+// MARK: - Routing
+
+/// Bon Appétit locations get the full menu; WesWings and Red & Black Café get
+/// their posted specials; anything else explains that no menu data exists.
+struct DiningMenuRouter: View {
+    let venueID: UUID
+    @Environment(AppSession.self) private var session
+
+    var body: some View {
+        if let venue = session.community.dining.first(where: { $0.id == venueID }) {
+            if venue.menuURLSlug != nil {
+                DiningMenuView(venueID: venueID)
+            } else if let feed = venue.specialsFeed {
+                DiningSpecialsView(venue: venue, source: feed)
+            } else {
+                ContentUnavailableView {
+                    Label("No menu in MyWes", systemImage: "fork.knife")
+                } description: {
+                    Text("\(venue.name) doesn’t publish menu data MyWes can show.")
+                } actions: {
+                    if let url = venue.officialMenuURL { Link("Open official menu page", destination: url) }
+                }
+                .navigationTitle(venue.name)
+            }
+        } else {
+            ContentUnavailableView("Location unavailable", systemImage: "fork.knife")
+        }
+    }
+}
+
+// MARK: - Posted specials (WesWings, Red & Black Café)
+
+struct DiningSpecialsView: View {
+    let venue: DiningVenue
+    let source: WesWingsSpecials.Source
+
+    @State private var posts: [DiningSpecialPost] = []
+    @State private var loading = false
+    @State private var error: String?
+    @State private var loaded = false
+    @State private var showingOfficialMenu = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Posted specials").font(Typography.headlineMedium).foregroundStyle(Theme.ink)
+                    Label("\(venue.name) posts photos of its specials board. MyWes shows those photos as posted and can’t list, search, or filter the items.",
+                          systemImage: "info.circle")
+                        .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
+                }
+
+                if loading && posts.isEmpty {
+                    ProgressView("Loading specials…").frame(maxWidth: .infinity).padding(.vertical, 24)
+                } else if let error, posts.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(error).foregroundStyle(Theme.secondaryText)
+                        Button("Retry") { Task { await load(force: true) } }
+                            .buttonStyle(.borderedProminent).tint(Theme.cardinal)
+                    }
+                } else if loaded && posts.isEmpty {
+                    Text("No specials have been posted in the last few days.")
+                        .foregroundStyle(Theme.secondaryText)
+                }
+
+                ForEach(posts) { post in specialCard(post) }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Divider()
+                    if venue.officialMenuURL != nil {
+                        Button("Full menu on weswings.com") { showingOfficialMenu = true }
+                            .font(.subheadline.bold()).foregroundStyle(Theme.cardinal)
+                        Text("The full menu is a set of photos the restaurant hasn’t updated recently. Prices and items may have changed.")
+                            .font(Typography.caption).foregroundStyle(Theme.secondaryText)
+                    }
+                    Text("Specials come from weswings.com. Ask staff about ingredients and allergens.")
+                        .font(Typography.caption).foregroundStyle(Theme.secondaryText)
+                }
+            }
+            .padding(Theme.screenPadding)
+        }
+        .background(Theme.background.ignoresSafeArea())
+        .navigationTitle(venue.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load(force: false) }
+        .refreshable { await load(force: true) }
+        .sheet(isPresented: $showingOfficialMenu) {
+            if let url = venue.officialMenuURL { OfficialDiningMenu(url: url).ignoresSafeArea() }
+        }
+    }
+
+    private func specialCard(_ post: DiningSpecialPost) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(post.title).font(.headline).foregroundStyle(Theme.ink)
+            Text("Posted \(DiningDateFormat.posted.string(from: post.postedAt))")
+                .font(Typography.caption).foregroundStyle(Theme.secondaryText)
+            if post.imageURLs.isEmpty {
+                Text("This post has no photo.").font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
+            }
+            ForEach(post.imageURLs, id: \.self) { url in
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFit()
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
+                            .accessibilityLabel("Photo of the \(post.title) board. Open the post for details.")
+                    case .failure:
+                        Text("Couldn’t load the photo.").font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
+                    default:
+                        ProgressView().frame(maxWidth: .infinity, minHeight: 160)
+                    }
+                }
+            }
+            Link("Open post on weswings.com", destination: post.link).font(Typography.bodySmall)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius).stroke(Theme.border))
+    }
+
+    private func load(force: Bool) async {
+        loading = true
+        defer { loading = false; loaded = true }
+        do {
+            posts = try await DiningMenuService.shared.specials(source, forceRefresh: force)
+            error = nil
+        } catch {
+            guard !Task.isCancelled else { return }
+            posts = []
+            self.error = (error as? URLError)?.code == .notConnectedToInternet
+                ? "You’re offline. Connect to load specials."
+                : "Couldn’t load specials right now."
         }
     }
 }

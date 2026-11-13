@@ -27,7 +27,7 @@ extension View {
             case .dining:
                 DiningView()
             case .diningMenu(let id):
-                DiningMenuView(venueID: id)
+                DiningMenuRouter(venueID: id)
             case .askWes:
                 AskWesView()
             case .search:

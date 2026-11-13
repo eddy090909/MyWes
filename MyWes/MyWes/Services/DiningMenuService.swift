@@ -38,6 +38,38 @@ actor DiningMenuService {
         return meals
     }
 
+    private var specialsData: (fetchedAt: Date, data: Data)?
+    private var specialsTask: Task<Data, Error>?
+
+    /// Recent specials posts for WesWings or Red & Black Café. Both come from
+    /// one weswings.com request, cached for 30 minutes.
+    func specials(_ source: WesWingsSpecials.Source, forceRefresh: Bool = false) async throws -> [DiningSpecialPost] {
+        let data: Data
+        if !forceRefresh, let cached = specialsData, Date().timeIntervalSince(cached.fetchedAt) < freshness {
+            data = cached.data
+        } else if let task = specialsTask {
+            data = try await task.value
+        } else {
+            let task = Task.detached(priority: .userInitiated) { try await Self.fetchSpecials() }
+            specialsTask = task
+            defer { specialsTask = nil }
+            data = try await task.value
+            specialsData = (Date(), data)
+        }
+        return try WesWingsSpecials.parse(data, source: source)
+    }
+
+    @concurrent
+    private nonisolated static func fetchSpecials() async throws -> Data {
+        var request = URLRequest(url: WesWingsSpecials.postsURL, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 20)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        return data
+    }
+
     @concurrent
     private nonisolated static func fetch(slug: String, dateKey: String) async throws -> [DiningMeal] {
         guard let url = BonAppetitMenu.url(slug: slug, dateKey: dateKey) else { throw URLError(.badURL) }

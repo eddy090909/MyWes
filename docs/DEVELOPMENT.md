@@ -33,26 +33,35 @@ xcodebuild -project MyWes/MyWes.xcodeproj -scheme MyWes -sdk iphonesimulator -co
 
 Dining shows native daily menus. The app downloads each location's public Bon Appétit page (`https://wesleyan.cafebonappetit.com/cafe/<menu_slug>/<YYYY-MM-DD>/`) and parses the `Bamco.menu_items` and `Bamco.dayparts` data embedded in it (`Models/DiningMenu.swift`, `Services/DiningMenuService.swift`). Menus are cached for 30 minutes per location and day. The official page stays one tap away as a fallback. Reviews are not implemented.
 
+Independent locations (`operator = 'independent'`) are not run by Bon Appétit, so no structured menus exist for them. WesWings and Red & Black Café post daily specials as photos on weswings.com. The app reads that site's public WordPress posts API (`Models/DiningSpecials.swift`) and shows each recent post's title, time and photo, labeled as posted photos and never as parsed menu items. Every other independent location shows "Menu data isn't available in MyWes", plus `menu_url` when an official page exists. Locations with no verifiable hours have `hours_published = false`, and the app never claims they are open or closed.
+
+Specials parser (pass a saved posts response to also check real data):
+
+```sh
+swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/CampusContent.swift MyWes/MyWes/Models/DiningMenu.swift MyWes/MyWes/Models/DiningSpecials.swift Tests/DiningSpecialsTests.swift -o /tmp/mywes-specials-tests
+/tmp/mywes-specials-tests
+```
+
 Hours live in `dining_locations`. `weekly_hours` holds the regular week; `special_hours` maps campus dates (`"2026-11-26": []`) to replacement hours for breaks and holidays. Each semester, update both and move `valid_through` forward in a new migration. Once `valid_through` passes, the app stops claiming a location is open.
 
 Menu parser (synthetic page; pass saved Bon Appétit HTML files to also check real pages):
 
 ```sh
-swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/CampusContent.swift MyWes/MyWes/Models/DiningMenu.swift Tests/DiningMenuTests.swift -o /tmp/mywes-menu-tests
+swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/CampusContent.swift MyWes/MyWes/Models/DiningMenu.swift MyWes/MyWes/Models/DiningSpecials.swift Tests/DiningMenuTests.swift -o /tmp/mywes-menu-tests
 /tmp/mywes-menu-tests
 ```
 
 Dining logic (actual production models):
 
 ```sh
-swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/CampusContent.swift Tests/DiningTests.swift -o /tmp/mywes-dining-tests
+swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/CampusContent.swift MyWes/MyWes/Models/DiningMenu.swift MyWes/MyWes/Models/DiningSpecials.swift Tests/DiningTests.swift -o /tmp/mywes-dining-tests
 /tmp/mywes-dining-tests
 ```
 
 Database response/request formats (actual production wire models):
 
 ```sh
-swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/DatabaseRecords.swift MyWes/MyWes/Models/CampusContent.swift Tests/DatabaseCodingTests.swift -o /tmp/mywes-coding-tests
+swiftc -module-cache-path /tmp/mywes-swift-module-cache MyWes/MyWes/Models/DatabaseRecords.swift MyWes/MyWes/Models/CampusContent.swift MyWes/MyWes/Models/DiningMenu.swift MyWes/MyWes/Models/DiningSpecials.swift Tests/DatabaseCodingTests.swift -o /tmp/mywes-coding-tests
 /tmp/mywes-coding-tests
 ```
 
