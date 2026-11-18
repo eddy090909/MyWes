@@ -8,7 +8,15 @@ nonisolated struct CampusQuestion: Codable, Identifiable, Equatable, Sendable {
         case body
         case topic
         case createdAt = "created_at"
+        case answers
     }
+
+    /// PostgREST embedded aggregate: `answers(count)` → [{"count": 3}].
+    nonisolated struct AnswerCount: Codable, Equatable, Sendable {
+        var count: Int
+    }
+
+    static let topics = ["Academics", "Majors & careers", "Campus life", "Housing", "Dining", "Events", "Life after Wes"]
 
     var id: UUID
     var authorId: UUID
@@ -16,6 +24,10 @@ nonisolated struct CampusQuestion: Codable, Identifiable, Equatable, Sendable {
     var body: String
     var topic: String
     var createdAt: Date
+    /// Present only when the query embeds `answers(count)`.
+    var answers: [AnswerCount]? = nil
+
+    var answerCount: Int? { answers?.first?.count }
 }
 
 nonisolated struct CampusAnswer: Codable, Identifiable, Equatable, Sendable {

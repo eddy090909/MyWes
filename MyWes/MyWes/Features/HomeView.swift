@@ -74,7 +74,7 @@ struct HomeView: View {
         .task { await session.community.refresh() }
         .refreshable {
             await session.catalog.refresh()
-            await session.community.refresh()
+            await session.community.refresh(force: true)
         }
     }
 
@@ -158,7 +158,7 @@ struct HomeView: View {
                 NavigationLink(value: AppRoute.dining) { SeeAllLink() }
             }
             if let error = session.community.diningError {
-                CampusRetry(message: error) { await session.community.refresh() }
+                CampusRetry(message: error) { await session.community.refresh(force: true) }
             } else if session.community.dining.isEmpty {
                 Text(session.community.isLoading ? "Loading dining hours…" : "No dining schedules published yet.")
                     .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
@@ -182,7 +182,7 @@ struct HomeView: View {
                 NavigationLink(value: AppRoute.askWes) { SeeAllLink() }
             }
             if let error = session.community.questionError {
-                CampusRetry(message: error) { await session.community.refresh() }
+                CampusRetry(message: error) { await session.community.refresh(force: true) }
             } else if session.community.questions.isEmpty {
                 Text(session.community.isLoading ? "Loading questions…" : "No questions yet. Ask your campus a question.")
                     .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)

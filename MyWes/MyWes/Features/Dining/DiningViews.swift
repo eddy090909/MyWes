@@ -19,7 +19,7 @@ struct DiningView: View {
                 Text("Hours are Eastern Time. Bon Appétit menus come from Bon Appétit; independent spots set their own menus, prices, and hours.")
                     .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
                 if let error = session.community.diningError {
-                    CampusRetry(message: error) { await session.community.refresh() }
+                    CampusRetry(message: error) { await session.community.refresh(force: true) }
                 }
                 if session.community.isLoading && session.community.dining.isEmpty { ProgressView() }
                 if session.community.dining.isEmpty && !session.community.isLoading && session.community.diningError == nil {
@@ -62,7 +62,7 @@ struct DiningView: View {
         .background(Theme.background.ignoresSafeArea())
         .navigationTitle("Dining").navigationBarTitleDisplayMode(.inline)
         .task { await session.community.refresh() }
-        .refreshable { await session.community.refresh() }
+        .refreshable { await session.community.refresh(force: true) }
     }
 }
 
@@ -296,7 +296,47 @@ struct DiningMenuView: View {
                         .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
                 }
             }
+            if !loading || !meals.isEmpty {
+                ForEach(unlistedServices, id: \.start) { period in unlistedNotice(period) }
+            }
         }
+    }
+
+    /// Official service periods that Bon Appétit publishes no menu for (late night).
+    private var unlistedServices: [DiningPeriod] {
+        guard let venue, error == nil, venue.hasCurrentSchedule(at: day(dayOffset)),
+              let periods = venue.periods(on: day(dayOffset)), !meals.isEmpty else { return [] }
+        return BonAppetitMenu.unlistedPeriods(periods, meals: meals)
+    }
+
+    private var minuteNow: Int {
+        let calendar = DiningVenue.calendar
+        let now = Date()
+        return calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+    }
+
+    private func unlistedNotice(_ period: DiningPeriod) -> some View {
+        let name = BonAppetitMenu.serviceName(for: period)
+        let happening = dayOffset == 0 && minuteNow >= period.start && minuteNow < period.end
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: period.start >= 21 * 60 ? "moon.stars.fill" : "clock")
+                .foregroundStyle(Theme.blueAccent)
+                .font(.system(size: 18))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(happening ? "\(name) is on now · \(period.label)" : "\(name) · \(period.label)")
+                    .font(Typography.bodyEmphasized).foregroundStyle(Theme.ink)
+                Text("Bon Appétit doesn’t publish a menu for this service, so MyWes can’t show it. The menus below are for the meals it does list.")
+                    .font(Typography.caption).foregroundStyle(Theme.secondaryText)
+                if venue?.name == "Summerfields" {
+                    Text("Late night orders go through the Wes2Go app (order by 12:30 AM).")
+                        .font(Typography.caption).foregroundStyle(Theme.secondaryText)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.blueAccent.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardRadius))
     }
 
     private var dayPicker: some View {
@@ -383,8 +423,13 @@ struct DiningMenuView: View {
                 .foregroundStyle(Theme.secondaryText)
         } else if let meal = selectedMeal {
             if let time = meal.timeLabel {
-                Text("\(meal.name) · \(time)")
-                    .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
+                HStack(spacing: 6) {
+                    Text("\(meal.name) · \(time)")
+                    if dayOffset == 0, let end = meal.end, minuteNow >= end {
+                        Text("· ended").foregroundStyle(Theme.cardinal)
+                    }
+                }
+                .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
             }
             let stations = filteredStations(meal)
             if stations.isEmpty {

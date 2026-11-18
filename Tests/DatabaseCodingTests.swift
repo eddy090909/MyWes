@@ -54,6 +54,12 @@ import Glibc
             {"id":"\(id)","author_id":"\(id)","title":"Question","body":"Details","topic":"Dining","created_at":"2026-11-07T18:00:00Z"}
             """)
         }
+        check("question list response with answer count") {
+            let row = try decode(CampusQuestion.self, """
+            {"id":"\(id)","author_id":"\(id)","title":"Question","body":"Details","topic":"Majors & careers","created_at":"2026-11-07T18:00:00Z","answers":[{"count":3}]}
+            """)
+            try require(row.answerCount == 3)
+        }
         check("answer response") {
             _ = try decode(CampusAnswer.self, """
             {"id":"\(id)","question_id":"\(id)","author_id":"\(id)","body":"Details","created_at":"2026-11-07T18:00:00Z"}

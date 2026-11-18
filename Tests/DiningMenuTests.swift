@@ -34,6 +34,17 @@ import Foundation
         precondition(BonAppetitMenu.defaultMeal(meals, minuteOfDay: 22 * 60)?.name == "Dinner")
         precondition(BonAppetitMenu.defaultMeal(meals, minuteOfDay: nil)?.name == "Breakfast")
 
+        // Summerfields: official 11–9 and 9:30–1; Bon Appétit lists lunch 11–1 and dinner 5–7.
+        let summerfields = [DiningPeriod(start: 660, end: 1260), DiningPeriod(start: 1290, end: 1500)]
+        let sfMeals = [DiningMeal(id: "3", name: "Lunch", start: 660, end: 780, stations: []),
+                       DiningMeal(id: "4", name: "Dinner", start: 1020, end: 1140, stations: [])]
+        let unlisted = BonAppetitMenu.unlistedPeriods(summerfields, meals: sfMeals)
+        precondition(unlisted == [DiningPeriod(start: 1290, end: 1500)], "late night has no menu")
+        precondition(BonAppetitMenu.serviceName(for: unlisted[0]) == "Late night")
+        precondition(BonAppetitMenu.unlistedPeriods([DiningPeriod(start: 480, end: 1200)],
+            meals: [DiningMeal(id: "6", name: "Grab 'n' Go", start: 480, end: 1200, stations: [])]).isEmpty)
+        precondition(BonAppetitMenu.unlistedPeriods(summerfields,
+            meals: [DiningMeal(id: "x", name: "Menu", start: nil, end: nil, stations: [])]).isEmpty)
         let closed = try BonAppetitMenu.parse(html: "Bamco.menu_items = [];")
         precondition(closed.isEmpty, "closed day")
         do { _ = try BonAppetitMenu.parse(html: "<html>maintenance</html>"); preconditionFailure("should throw") }

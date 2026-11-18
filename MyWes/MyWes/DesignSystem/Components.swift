@@ -237,12 +237,57 @@ extension SectionHeader where Trailing == EmptyView {
     }
 }
 
-func eventPlaceholderColor(for category: String) -> Color {
-    switch category {
-    case "Academic", "Community":
-        return Theme.blueAccent
-    default:
-        return Theme.cardinal
+/// Soft, per-category accent for events: a muted tint plus an SF Symbol.
+struct EventCategoryStyle {
+    let tint: Color
+    let symbol: String
+
+    init(_ category: String) {
+        switch category {
+        case "Arts": tint = Color(red: 0.55, green: 0.33, blue: 0.62); symbol = "paintpalette.fill"
+        case "Athletics": tint = Color(red: 0.16, green: 0.50, blue: 0.42); symbol = "figure.run"
+        case "Academic": tint = Theme.blueAccent; symbol = "book.fill"
+        case "Social": tint = Color(red: 0.80, green: 0.45, blue: 0.16); symbol = "person.3.fill"
+        case "Dining": tint = Theme.cardinal; symbol = "fork.knife"
+        default: tint = Color(red: 0.36, green: 0.42, blue: 0.48); symbol = "person.2.fill"
+        }
+    }
+}
+
+/// Category pill: tinted icon and label on a light wash of the same tint.
+struct EventCategoryTag: View {
+    let category: String
+
+    var body: some View {
+        let style = EventCategoryStyle(category)
+        Label(category, systemImage: style.symbol)
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(style.tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(style.tint.opacity(0.10))
+            .clipShape(Capsule())
+    }
+}
+
+/// Month/day tile used on event cards and rows.
+struct EventDateTile: View {
+    let event: Event
+    var size: CGFloat = 44
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(event.monthLabel)
+                .font(.system(size: size * 0.24, weight: .bold))
+                .foregroundStyle(Theme.cardinal)
+            Text(event.dayNumber)
+                .font(.system(size: size * 0.42, weight: .heavy))
+                .foregroundStyle(Theme.ink)
+        }
+        .frame(width: size, height: size)
+        .background(Theme.savedBannerBackground.opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityHidden(true)
     }
 }
 
@@ -273,40 +318,33 @@ struct EventCard: View {
     let event: Event
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: 0)
-                    .fill(eventPlaceholderColor(for: event.category))
-                    .frame(height: 74)
-
-                Text(event.category)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(.black.opacity(0.4))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .padding(8)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                EventDateTile(event: event)
+                Spacer(minLength: 8)
+                EventCategoryTag(category: event.category)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(event.title)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+            Text(event.title)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(2, reservesSpace: true)
+                .multilineTextAlignment(.leading)
 
-                Text("\(event.dateLabel) · \(event.location)")
+            VStack(alignment: .leading, spacing: 2) {
+                Text(event.time)
+                    .font(Typography.captionEmphasized)
+                    .foregroundStyle(Theme.ink.opacity(0.8))
+                Text(event.location)
                     .font(Typography.captionEmphasized)
                     .foregroundStyle(Theme.secondaryText)
-                    .lineLimit(1)
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
+            .lineLimit(1)
         }
-        .frame(width: 200, alignment: .leading)
+        .padding(12)
+        .frame(width: 220, alignment: .leading)
         .cardChrome()
+        .accessibilityElement(children: .combine)
     }
 }
 

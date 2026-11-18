@@ -87,26 +87,28 @@ struct EventListCard: View {
     let event: Event
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            eventPlaceholderColor(for: event.category)
-                .frame(height: 64)
+        HStack(alignment: .top, spacing: 12) {
+            EventDateTile(event: event, size: 48)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(event.title)
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(2)
-                Text("\(event.dateLabel) · \(event.time) · \(event.location)")
+                    .multilineTextAlignment(.leading)
+                Text("\(event.time) · \(event.location)")
                     .font(Typography.caption)
                     .foregroundStyle(Theme.secondaryText)
                     .lineLimit(1)
+                EventCategoryTag(category: event.category)
+                    .padding(.top, 2)
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
+
+            Spacer(minLength: 0)
         }
+        .padding(12)
         .cardChrome()
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 

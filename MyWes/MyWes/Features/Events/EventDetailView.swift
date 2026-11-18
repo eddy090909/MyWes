@@ -96,18 +96,25 @@ struct EventDetailView: View {
 
     private func header(_ event: Event) -> some View {
         ZStack(alignment: .topLeading) {
-            eventPlaceholderColor(for: event.category)
-                .frame(height: 180)
+            let style = EventCategoryStyle(event.category)
+            LinearGradient(colors: [style.tint.opacity(0.18), style.tint.opacity(0.04)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                .frame(height: 150)
+                .overlay(alignment: .bottomTrailing) {
+                    Image(systemName: style.symbol)
+                        .font(.system(size: 64, weight: .semibold))
+                        .foregroundStyle(style.tint.opacity(0.18))
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 12)
+                        .accessibilityHidden(true)
+                }
                 .overlay(alignment: .bottomLeading) {
-                    Text(event.category)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(.black.opacity(0.4))
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .padding(.leading, 16)
-                        .padding(.bottom, 14)
+                    HStack(spacing: 10) {
+                        EventDateTile(event: event, size: 52)
+                        EventCategoryTag(category: event.category)
+                    }
+                    .padding(.leading, 20)
+                    .padding(.bottom, 14)
                 }
 
             Button {

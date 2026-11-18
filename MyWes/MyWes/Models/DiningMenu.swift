@@ -108,6 +108,21 @@ nonisolated enum BonAppetitMenu {
         return meals.last
     }
 
+    /// Service periods from the official hours that no published meal covers,
+    /// e.g. Summerfields late night (9:30 PM–1 AM), which Bon Appétit never lists.
+    static func unlistedPeriods(_ periods: [DiningPeriod], meals: [DiningMeal]) -> [DiningPeriod] {
+        // A meal without times can't be placed; assume it covers the day.
+        guard !meals.contains(where: { $0.start == nil || $0.end == nil }) else { return [] }
+        return periods.filter { period in
+            !meals.contains { meal in meal.start! < period.end && meal.end! > period.start }
+        }
+    }
+
+    /// "Late night" for service starting 9 PM or later, otherwise a generic label.
+    static func serviceName(for period: DiningPeriod) -> String {
+        period.start >= 21 * 60 ? "Late night" : "Additional service"
+    }
+
     /// Parses a cafe page. A valid page with no published meals returns [].
     static func parse(html: String) throws -> [DiningMeal] {
         guard let itemsJSON = jsonValue(after: "Bamco.menu_items = ", in: html),

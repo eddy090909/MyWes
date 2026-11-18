@@ -15,6 +15,9 @@ final class CommunityStore {
     private var client: SupabaseClient?
     private var isPreview = false
     private var generation = 0
+    private var lastRefresh: Date?
+    /// True once questions and dining have loaded at least once (or failed).
+    private(set) var hasLoaded = false
 
     init(client: SupabaseClient?) { self.client = client }
 
@@ -38,10 +41,17 @@ final class CommunityStore {
         questionError = nil
         diningError = nil
         isLoading = false
+        hasLoaded = false
+        lastRefresh = nil
     }
 
-    func refresh() async {
+    /// Loads questions and dining. Screens call this on appear; repeat calls
+    /// within a minute are skipped so switching tabs doesn't reload (and
+    /// re-layout) everything. Pull-to-refresh passes `force: true`.
+    func refresh(force: Bool = false) async {
         guard !isLoading, !isPreview else { return }
+        if !force, let lastRefresh, Date().timeIntervalSince(lastRefresh) < 60,
+           questionError == nil, diningError == nil { return }
         isLoading = true
         let token = generation
         async let q: () = loadQuestions(token: token)
@@ -49,12 +59,14 @@ final class CommunityStore {
         _ = await (q, d)
         guard token == generation else { return }
         isLoading = false
+        hasLoaded = true
+        lastRefresh = Date()
     }
 
     private func loadQuestions(token: Int) async {
         do {
             let rows: [CampusQuestion] = try await configuredClient().from("questions")
-                .select().order("created_at", ascending: false).limit(100).execute().value
+                .select("*, answers(count)").order("created_at", ascending: false).limit(100).execute().value
             guard token == generation, !Task.isCancelled else { return }
             questions = rows
             questionError = nil
@@ -84,7 +96,7 @@ final class CommunityStore {
         let escaped = needle.replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "%", with: "\\%")
             .replacingOccurrences(of: "_", with: "\\_")
-        return try await configuredClient().from("questions").select()
+        return try await configuredClient().from("questions").select("*, answers(count)")
             .ilike("title", pattern: "%\(escaped)%")
             .order("created_at", ascending: false).limit(100).execute().value
     }
@@ -108,8 +120,17 @@ final class CommunityStore {
     }
 
     func postAnswer(questionID: UUID, body: String) async throws -> CampusAnswer {
-        try await configuredClient().from("answers")
+        let answer: CampusAnswer = try await configuredClient().from("answers")
             .insert(NewAnswer(questionId: questionID, body: body)).select().single().execute().value
+        adjustAnswerCount(questionID: questionID, by: 1)
+        return answer
+    }
+
+    /// Keeps list answer counts current without reloading AskWes.
+    func adjustAnswerCount(questionID: UUID, by delta: Int) {
+        guard let index = questions.firstIndex(where: { $0.id == questionID }) else { return }
+        let current = questions[index].answerCount ?? 0
+        questions[index].answers = [.init(count: max(0, current + delta))]
     }
 
     func deleteQuestion(id: UUID) async throws {
@@ -118,7 +139,8 @@ final class CommunityStore {
         if token == generation { questions.removeAll { $0.id == id } }
     }
 
-    func deleteAnswer(id: UUID) async throws {
+    func deleteAnswer(id: UUID, questionID: UUID) async throws {
         try await configuredClient().from("answers").delete().eq("id", value: id).execute()
+        adjustAnswerCount(questionID: questionID, by: -1)
     }
 }
