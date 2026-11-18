@@ -26,6 +26,8 @@ nonisolated struct DiningMenuItem: Identifiable, Equatable, Hashable, Sendable {
     var calories: String?
     var isFeatured: Bool
     var nutrients: [DiningNutrient]
+    /// Only for hand-entered menus (e.g. "$8.50" or "1 swipe").
+    var price: String? = nil
 
     var isVegan: Bool { dietary.contains(DiningDiet.vegan.label) }
     var isVegetarian: Bool { isVegan || dietary.contains(DiningDiet.vegetarian.label) }
@@ -76,6 +78,10 @@ nonisolated struct DiningMeal: Identifiable, Equatable, Hashable, Sendable {
     var start: Int?
     var end: Int?
     var stations: [DiningStation]
+    /// Set for hand-entered menus: where the items came from and when.
+    var sourceNote: String? = nil
+
+    var isManual: Bool { sourceNote != nil }
 
     var timeLabel: String? {
         guard let start, let end else { return nil }
@@ -83,6 +89,54 @@ nonisolated struct DiningMeal: Identifiable, Equatable, Hashable, Sendable {
     }
 
     var itemCount: Int { stations.reduce(0) { $0 + $1.items.count } }
+}
+
+/// A menu entered by hand for a service Bon Appétit doesn't publish, such as
+/// Summerfields late night (copied from the Wes2Go ordering app).
+/// Stored in dining_locations.manual_menus.
+nonisolated struct DiningManualMenu: Codable, Equatable, Sendable {
+    nonisolated struct Item: Codable, Equatable, Sendable {
+        var name: String
+        var details: String?
+        var price: String?
+        var dietary: [String]?
+    }
+
+    nonisolated struct Section: Codable, Equatable, Sendable {
+        var name: String
+        var items: [Item]
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case service, start, end, source, sections
+        case verifiedOn = "verified_on"
+    }
+
+    var service: String
+    /// Matches the start (minutes after midnight) of the service period it describes.
+    var start: Int
+    var end: Int
+    var source: String
+    var verifiedOn: String
+    var sections: [Section]
+
+    var meal: DiningMeal {
+        DiningMeal(
+            id: "manual-\(start)",
+            name: service,
+            start: start,
+            end: end,
+            stations: sections.enumerated().compactMap { sectionIndex, section in
+                let items = section.items.enumerated().map { itemIndex, item in
+                    DiningMenuItem(id: "manual-\(start)-\(sectionIndex)-\(itemIndex)", name: item.name,
+                                   details: item.details ?? "", dietary: item.dietary ?? [], calories: nil,
+                                   isFeatured: true, nutrients: [], price: item.price)
+                }
+                return items.isEmpty ? nil : DiningStation(id: "manual-\(start)-\(sectionIndex)", name: section.name, note: "", items: items)
+            },
+            sourceNote: "From \(source), checked \(verifiedOn). Items and prices can change."
+        )
+    }
 }
 
 nonisolated enum DiningMenuError: Error, Equatable {

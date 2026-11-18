@@ -34,6 +34,15 @@ import Foundation
         assert(legacy.menuURLSlug == "summerfields" && legacy.specialHours.isEmpty && legacy.sortOrder == 100)
         let current = try JSONDecoder().decode(DiningVenue.self, from: Data(#"{"id":"\#(UUID())","name":"Pi Café","location":"Casper","weekly_hours":[[],[],[],[],[],[],[]],"special_hours":{"2026-11-26":[]},"menu_slug":"pi-cafe","sort_order":40,"notes":"","source_url":"https://www.wesleyan.edu/dining/","verified_on":"2026-11-13","valid_through":"2026-12-13"}"#.utf8))
         assert(current.menuURLSlug == "pi-cafe" && current.specialHours["2026-11-26"] == [] && current.sortOrder == 40)
+        // Hand-entered late-night menu applies on days whose schedule has a 9:30 PM service.
+        let withManual = try JSONDecoder().decode(DiningVenue.self, from: Data(#"{"id":"\#(UUID())","name":"Summerfields","location":"Butterfield C","weekly_hours":[[{"start":1290,"end":1500}],[],[],[],[],[],[]],"manual_menus":[{"service":"Late night","start":1290,"end":1500,"source":"Wes2Go","verified_on":"2026-11-18","sections":[{"name":"Grill","items":[{"name":"Cheeseburger","price":"$8.50"},{"name":"Fries"}]},{"name":"Empty","items":[]}]}],"notes":"","source_url":"https://www.wesleyan.edu/dining/","verified_on":"2026-11-13","valid_through":"2026-12-13"}"#.utf8))
+        let sunday = date("2026-11-15T17:00:00Z"), monday = date("2026-11-16T17:00:00Z")
+        let lateNight = withManual.manualMeals(on: sunday)
+        assert(lateNight.map(\.name) == ["Late night"] && lateNight[0].isManual && lateNight[0].stations.count == 1)
+        assert(lateNight[0].stations[0].items.map(\.price) == ["$8.50", nil])
+        assert(withManual.manualMeals(on: monday).isEmpty)
+        let broken = try JSONDecoder().decode(DiningVenue.self, from: Data(#"{"id":"\#(UUID())","name":"X","location":"Y","weekly_hours":[[],[],[],[],[],[],[]],"manual_menus":[{"oops":true}],"notes":"","source_url":"https://www.wesleyan.edu/dining/","verified_on":"2026-11-13","valid_through":"2026-12-13"}"#.utf8))
+        assert(broken.manualMenus.isEmpty, "malformed manual menu doesn't break the venue")
         venue.menuSlug = "../evil"
         assert(venue.menuURLSlug == nil)
         venue.weeklyHours = []

@@ -231,7 +231,7 @@ struct DiningMenuView: View {
     @Environment(AppSession.self) private var session
 
     @State private var dayOffset = 0
-    @State private var meals: [DiningMeal] = []
+    @State private var fetchedMeals: [DiningMeal] = []
     @State private var selectedMealID: String?
     @State private var diet: DiningDiet?
     @State private var searchText = ""
@@ -248,6 +248,12 @@ struct DiningMenuView: View {
     }
 
     private var dateKey: String { DiningVenue.dateKey(day(dayOffset)) }
+
+    /// Bon Appétit meals plus hand-entered ones (late night), in time order.
+    private var meals: [DiningMeal] {
+        let manual = venue?.manualMeals(on: day(dayOffset)) ?? []
+        return (fetchedMeals + manual).sorted { ($0.start ?? 0) < ($1.start ?? 0) }
+    }
 
     private var selectedMeal: DiningMeal? {
         meals.first { $0.id == selectedMealID } ?? meals.first
@@ -330,6 +336,7 @@ struct DiningMenuView: View {
                 if venue?.name == "Summerfields" {
                     Text("Late night orders go through the Wes2Go app (order by 12:30 AM).")
                         .font(Typography.caption).foregroundStyle(Theme.secondaryText)
+                    Wes2GoLink().padding(.top, 2)
                 }
             }
         }
@@ -431,6 +438,13 @@ struct DiningMenuView: View {
                 }
                 .font(Typography.bodySmall).foregroundStyle(Theme.secondaryText)
             }
+            if let note = meal.sourceNote {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label(note, systemImage: "hand.raised")
+                        .font(Typography.caption).foregroundStyle(Theme.secondaryText)
+                    Wes2GoLink()
+                }
+            }
             let stations = filteredStations(meal)
             if stations.isEmpty {
                 Text(!query.isEmpty ? "No items match “\(query)”."
@@ -503,7 +517,7 @@ struct DiningMenuView: View {
 
     private func load(force: Bool) async {
         guard let slug = venue?.menuURLSlug else {
-            meals = []
+            fetchedMeals = []
             error = "This location doesn’t publish a menu."
             return
         }
@@ -513,23 +527,36 @@ struct DiningMenuView: View {
         do {
             let result = try await DiningMenuService.shared.meals(slug: slug, dateKey: key, forceRefresh: force)
             guard key == dateKey, !Task.isCancelled else { return }
-            meals = result
+            fetchedMeals = result
             error = nil
-            if selectedMealID == nil || !result.contains(where: { $0.id == selectedMealID }) {
-                let calendar = DiningVenue.calendar
-                let now = Date()
-                let minute = dayOffset == 0 ? calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now) : nil
-                selectedMealID = BonAppetitMenu.defaultMeal(result, minuteOfDay: minute)?.id
+            let all = meals
+            if selectedMealID == nil || !all.contains(where: { $0.id == selectedMealID }) {
+                selectedMealID = BonAppetitMenu.defaultMeal(all, minuteOfDay: dayOffset == 0 ? minuteNow : nil)?.id
             }
         } catch is CancellationError {
             return
         } catch {
             guard key == dateKey, !Task.isCancelled else { return }
-            meals = []
+            fetchedMeals = []
             self.error = (error as? URLError)?.code == .notConnectedToInternet
                 ? "You’re offline. Connect to load the menu."
                 : "Couldn’t load the menu right now."
         }
+    }
+}
+
+/// Opens the App Store to Transact Mobile Ordering (Wesleyan's Wes2Go);
+/// the page shows "Open" when the app is already installed.
+struct Wes2GoLink: View {
+    private static let url = URL(string: "itms-apps://search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?media=software&term=Transact%20Mobile%20Ordering")!
+
+    var body: some View {
+        Link(destination: Self.url) {
+            Label("Order in Wes2Go", systemImage: "bag")
+                .font(.subheadline.bold())
+                .foregroundStyle(Theme.cardinal)
+        }
+        .accessibilityHint("Opens the App Store page for Transact Mobile Ordering")
     }
 }
 
@@ -687,7 +714,9 @@ struct DiningItemRow: View {
                 if !item.dietary.isEmpty { DietaryTags(labels: item.dietary) }
             }
             Spacer(minLength: 8)
-            if let calories = item.calories {
+            if let price = item.price {
+                Text(price).font(Typography.label).foregroundStyle(Theme.ink)
+            } else if let calories = item.calories {
                 Text("\(calories) cal").font(Typography.caption).foregroundStyle(Theme.secondaryText)
             }
         }

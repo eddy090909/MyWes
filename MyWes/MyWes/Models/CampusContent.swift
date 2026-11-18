@@ -73,6 +73,7 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
         case menuUrl = "menu_url"
         case specialsSource = "specials_source"
         case hoursPublished = "hours_published"
+        case manualMenus = "manual_menus"
         case verifiedOn = "verified_on"
         case validThrough = "valid_through"
     }
@@ -99,12 +100,14 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
     var specialsSource: String?
     /// False when the location publishes no hours we can verify.
     var hoursPublished: Bool = true
+    /// Hand-entered menus for services Bon Appétit doesn't publish.
+    var manualMenus: [DiningManualMenu] = []
 
     init(id: UUID, name: String, location: String, weeklyHours: [[DiningPeriod]], notes: String,
          sourceUrl: String, verifiedOn: String, validThrough: String,
          specialHours: [String: [DiningPeriod]] = [:], menuSlug: String? = nil, sortOrder: Int = 100,
          operatorKind: String = "bon_appetit", menuUrl: String? = nil, specialsSource: String? = nil,
-         hoursPublished: Bool = true) {
+         hoursPublished: Bool = true, manualMenus: [DiningManualMenu] = []) {
         self.id = id
         self.name = name
         self.location = location
@@ -120,6 +123,7 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
         self.menuUrl = menuUrl
         self.specialsSource = specialsSource
         self.hoursPublished = hoursPublished
+        self.manualMenus = manualMenus
     }
 
     // Newer columns are optional so the app still decodes rows from a
@@ -141,7 +145,9 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
             operatorKind: try c.decodeIfPresent(String.self, forKey: .operatorKind) ?? "bon_appetit",
             menuUrl: try c.decodeIfPresent(String.self, forKey: .menuUrl),
             specialsSource: try c.decodeIfPresent(String.self, forKey: .specialsSource),
-            hoursPublished: try c.decodeIfPresent(Bool.self, forKey: .hoursPublished) ?? true
+            hoursPublished: try c.decodeIfPresent(Bool.self, forKey: .hoursPublished) ?? true,
+            // A malformed hand-entered menu shouldn't hide the whole location.
+            manualMenus: (try? c.decodeIfPresent([DiningManualMenu].self, forKey: .manualMenus)) ?? []
         )
     }
 
@@ -195,6 +201,13 @@ nonisolated struct DiningVenue: Codable, Identifiable, Equatable, Sendable {
         guard weeklyHours.count == 7 else { return nil }
         if let special = specialHours[Self.dateKey(date)] { return special }
         return weeklyHours[Self.calendar.component(.weekday, from: date) - 1]
+    }
+
+    /// Hand-entered meals that apply on this date: a manual menu applies when
+    /// that day's schedule has a service period starting at the same time.
+    func manualMeals(on date: Date) -> [DiningMeal] {
+        guard let periods = periods(on: date), hasCurrentSchedule(at: date) else { return [] }
+        return manualMenus.filter { menu in periods.contains { $0.start == menu.start } }.map(\.meal)
     }
 
     func hasSpecialHours(on date: Date) -> Bool {
