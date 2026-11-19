@@ -13,7 +13,9 @@ struct HomeView: View {
     }
 
     private var greeting: String {
-        let hour = Calendar.current.component(.hour, from: Date())
+        var campus = Calendar(identifier: .gregorian)
+        campus.timeZone = CampusTime.timeZone
+        let hour = campus.component(.hour, from: Date())
         switch hour {
         case 5..<12: return "Good morning"
         case 12..<17: return "Good afternoon"
@@ -113,7 +115,7 @@ struct HomeView: View {
 
     private var upcomingEvents: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Upcoming Events") {
+            SectionHeader(title: "Upcoming events") {
                 NavigationLink(value: AppRoute.events) {
                     SeeAllLink()
                 }
@@ -154,7 +156,7 @@ struct HomeView: View {
 
     private var diningToday: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Dining Today") {
+            SectionHeader(title: "Dining today") {
                 NavigationLink(value: AppRoute.dining) { SeeAllLink() }
             }
             if let error = session.community.diningError {
@@ -167,10 +169,14 @@ struct HomeView: View {
                 let venues = session.community.sortedDining
                 let openFirst = venues.filter { $0.scheduledOpen(at: context.date) == true }
                     + venues.filter { $0.scheduledOpen(at: context.date) != true }
-                VStack(spacing: 10) {
-                    ForEach(openFirst.prefix(3)) { venue in
-                        DiningVenueCard(venue: venue, date: context.date, compact: true)
+                if !openFirst.isEmpty {
+                    VStack(spacing: 0) {
+                        ForEach(Array(openFirst.prefix(4).enumerated()), id: \.element.id) { index, venue in
+                            if index > 0 { Divider().padding(.leading, 14) }
+                            DiningStatusRow(venue: venue, date: context.date)
+                        }
                     }
+                    .cardChrome()
                 }
             }
         }.padding(.horizontal, Theme.screenPadding)
@@ -206,20 +212,22 @@ struct HomeView: View {
 
     private var followedOrgsContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Events from Organizations You Follow")
+            SectionHeader(title: "From organizations you follow")
                 .padding(.horizontal, Theme.screenPadding)
 
             let updates = session.catalog.upcomingEvents.filter { session.followedOrgIDs.contains($0.orgID) }
             if updates.isEmpty {
-                Text("No upcoming events from followed organizations.")
+                Text(session.followedOrgIDs.isEmpty
+                     ? "Follow organizations in Discover to see their events here."
+                     : "No upcoming events from organizations you follow.")
                     .font(Typography.bodySmall)
                     .foregroundStyle(Theme.secondaryText)
                     .padding(.horizontal, Theme.screenPadding)
             } else {
                 VStack(spacing: Theme.listGap) {
-                    ForEach(updates) { event in
+                    ForEach(updates.prefix(5)) { event in
                         NavigationLink(value: AppRoute.event(event.id)) {
-                            SearchResultRow(title: event.title)
+                            EventListCard(event: event)
                         }
                         .buttonStyle(.plain)
                     }

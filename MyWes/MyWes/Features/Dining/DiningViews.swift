@@ -117,29 +117,33 @@ struct DiningVenueCard: View {
             menuAccess
 
             if !compact {
-                if venue.hoursPublished {
-                    DisclosureGroup("Hours this week") {
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(0..<7, id: \.self) { offset in
-                                weekRow(offset: offset)
+                Divider().padding(.top, 2)
+                DisclosureGroup(venue.hoursPublished ? "Hours & details" : "Details") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        if venue.hoursPublished {
+                            VStack(alignment: .leading, spacing: 4) {
+                                ForEach(0..<7, id: \.self) { offset in
+                                    weekRow(offset: offset)
+                                }
                             }
-                        }.padding(.top, 4)
+                        }
+                        if !venue.notes.isEmpty {
+                            Text(venue.notes).font(Typography.caption).foregroundStyle(Theme.ink.opacity(0.8))
+                        }
+                        if venue.hoursPublished {
+                            Text("Hours verified \(venue.verifiedOn) · valid through \(venue.validThrough)")
+                                .font(Typography.caption).foregroundStyle(Theme.secondaryText)
+                        }
+                        if let url = URL(string: venue.sourceUrl), url.scheme == "https",
+                           url.host == "www.wesleyan.edu" || url.host == "weswings.com" {
+                            Link(venue.isIndependent ? "Official info" : "Official hours and exceptions", destination: url)
+                                .font(Typography.bodySmall)
+                        }
                     }
-                    .font(Typography.bodySmall)
-                    .tint(Theme.ink)
+                    .padding(.top, 8)
                 }
-                if !venue.notes.isEmpty {
-                    Text(venue.notes).font(Typography.caption).foregroundStyle(Theme.secondaryText)
-                }
-                if venue.hoursPublished {
-                    Text("Verified \(venue.verifiedOn) · valid through \(venue.validThrough)")
-                        .font(Typography.caption).foregroundStyle(Theme.secondaryText)
-                }
-                if let url = URL(string: venue.sourceUrl), url.scheme == "https",
-                   url.host == "www.wesleyan.edu" || url.host == "weswings.com" {
-                    Link(venue.isIndependent ? "Official info" : "Official hours and exceptions", destination: url)
-                        .font(Typography.bodySmall)
-                }
+                .font(Typography.label)
+                .tint(Theme.ink)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(16)
@@ -159,12 +163,20 @@ struct DiningVenueCard: View {
                 Label("See today’s menu", systemImage: "fork.knife")
                     .font(.subheadline.bold())
                     .foregroundStyle(Theme.cardinal)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Theme.savedBannerBackground)
+                    .clipShape(Capsule())
             }
         } else if venue.specialsFeed != nil {
             NavigationLink(value: AppRoute.diningMenu(venue.id)) {
                 Label("See posted specials", systemImage: "photo.on.rectangle")
                     .font(.subheadline.bold())
                     .foregroundStyle(Theme.cardinal)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Theme.savedBannerBackground)
+                    .clipShape(Capsule())
             }
         } else {
             VStack(alignment: .leading, spacing: 4) {
@@ -205,6 +217,55 @@ struct DiningVenueCard: View {
                 Text("•").foregroundStyle(Theme.cardinal).accessibilityLabel("Special hours")
             }
         }.font(Typography.caption)
+    }
+}
+
+/// One-line dining status for Home: name, open/closed detail, chevron.
+struct DiningStatusRow: View {
+    let venue: DiningVenue
+    let date: Date
+
+    private var open: Bool? { venue.scheduledOpen(at: date) }
+
+    private var detail: String {
+        guard venue.hoursPublished else { return "Hours not published" }
+        guard let open else { return "Check official hours" }
+        if let status = venue.statusDetail(at: date), status != "Open now" { return status }
+        return open ? "Open now" : "Closed"
+    }
+
+    var body: some View {
+        NavigationLink(value: venue.hasInAppMenu ? AppRoute.diningMenu(venue.id) : AppRoute.dining) {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(open == true ? Theme.success : Theme.border)
+                    .frame(width: 9, height: 9)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(venue.name)
+                        .font(.system(size: 14.5, weight: .bold))
+                        .foregroundStyle(Theme.ink)
+                        .lineLimit(1)
+                    Text(detail)
+                        .font(Typography.caption)
+                        .foregroundStyle(open == true ? Theme.success : Theme.secondaryText)
+                }
+                Spacer(minLength: 8)
+                if venue.hasInAppMenu {
+                    Text(venue.menuURLSlug != nil ? "Menu" : "Specials")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.cardinal)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.secondaryText)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
     }
 }
 
